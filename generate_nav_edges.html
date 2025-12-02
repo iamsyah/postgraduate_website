@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Navigation Edge Generator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    .section {
+      margin-bottom: 30px;
+    }
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #555;
+    }
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 15px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      resize: vertical;
+    }
+    button {
+      background: #2196F3;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background: #1976D2;
+    }
+    button.secondary {
+      background: #4CAF50;
+    }
+    button.secondary:hover {
+      background: #388E3C;
+    }
+    .output {
+      background: #f9f9f9;
+      border: 2px solid #4CAF50;
+      border-radius: 4px;
+      padding: 15px;
+      margin-top: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .output pre {
+      margin: 0;
+      white-space: pre-wrap;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+    }
+    .stats {
+      background: #E3F2FD;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    .stats div {
+      margin: 5px 0;
+    }
+    .warning {
+      background: #FFF3E0;
+      border-left: 4px solid #FF9800;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    .success {
+      background: #E8F5E9;
+      border-left: 4px solid #4CAF50;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    .node-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .node-item {
+      background: #f5f5f5;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🗺️ Navigation Edge Generator</h1>
+    <p class="subtitle">Automatically generate navigation edges for your SVG indoor map</p>
+    
+    <div class="section">
+      <label>Step 1: Paste your navigation nodes (from SVG)</label>
+      <textarea id="nodesInput" placeholder="Paste your <circle class=&quot;nav-node&quot; ...> elements here
+
+Example:
+<circle class=&quot;nav-node&quot; id=&quot;nav_room_BK36&quot; cx=&quot;1396.305&quot; cy=&quot;332.204&quot; r=&quot;5&quot;/>
+<circle class=&quot;nav-node&quot; id=&quot;nav_room_BK37&quot; cx=&quot;1454.385&quot; cy=&quot;475.909&quot; r=&quot;5&quot;/>
+..."></textarea>
+    </div>
+    
+    <div class="section">
+      <label>Step 2: Configure edge generation</label>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+          <label style="font-weight: normal;">Max Distance (pixels)</label>
+          <input type="number" id="maxDist" value="400" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+          <small style="color: #666;">Maximum distance to connect nodes</small>
+        </div>
+        <div>
+          <label style="font-weight: normal;">Max Neighbors (K)</label>
+          <input type="number" id="maxNeighbors" value="3" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+          <small style="color: #666;">Connect to K nearest neighbors</small>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <button onclick="parseNodes()">Parse Nodes</button>
+      <button class="secondary" onclick="generateEdges()">Generate Edges</button>
+      <button onclick="copyOutput()" style="background: #9C27B0;">Copy Output</button>
+    </div>
+    
+    <div id="stats" style="display: none;" class="stats">
+      <h3 style="margin-top: 0;">📊 Statistics</h3>
+      <div id="statsContent"></div>
+    </div>
+    
+    <div id="nodeList" style="display: none;">
+      <h3>Parsed Nodes</h3>
+      <div class="node-list" id="nodeListContent"></div>
+    </div>
+    
+    <div id="output" style="display: none;" class="output">
+      <h3 style="margin-top: 0;">Generated Navigation Edges</h3>
+      <pre id="outputContent"></pre>
+    </div>
+  </div>
+
+  <script>
+    let nodes = [];
+    
+    function parseNodes() {
+      const input = document.getElementById('nodesInput').value;
+      nodes = [];
+      
+      // Parse circle elements
+      const circleRegex = /<circle[^>]*class="nav-node"[^>]*>/g;
+      const matches = input.match(circleRegex);
+      
+      if (!matches) {
+        alert('No nav-node elements found. Make sure they have class="nav-node"');
+        return;
+      }
+      
+      matches.forEach(match => {
+        const idMatch = match.match(/id="([^"]+)"/);
+        const cxMatch = match.match(/cx="([^"]+)"/);
+        const cyMatch = match.match(/cy="([^"]+)"/);
+        const dataRoomMatch = match.match(/data-room="([^"]+)"/);
+        
+        if (idMatch) {
+          const node = {
+            id: idMatch[1],
+            x: cxMatch ? parseFloat(cxMatch[1]) : 0,
+            y: cyMatch ? parseFloat(cyMatch[1]) : 0,
+            dataRoom: dataRoomMatch ? dataRoomMatch[1] : null
+          };
+          nodes.push(node);
+        }
+      });
+      
+      if (nodes.length === 0) {
+        alert('Could not parse any nodes. Check your input format.');
+        return;
+      }
+      
+      // Show stats
+      document.getElementById('stats').style.display = 'block';
+      document.getElementById('statsContent').innerHTML = `
+        <div><strong>Total Nodes:</strong> ${nodes.length}</div>
+        <div><strong>Nodes with coordinates:</strong> ${nodes.filter(n => n.x !== 0 || n.y !== 0).length}</div>
+        <div><strong>Nodes with data-room:</strong> ${nodes.filter(n => n.dataRoom).length}</div>
+      `;
+      
+      // Show node list
+      document.getElementById('nodeList').style.display = 'block';
+      document.getElementById('nodeListContent').innerHTML = nodes.map(n => 
+        `<div class="node-item">${n.id}<br><small>(${n.x.toFixed(1)}, ${n.y.toFixed(1)})</small></div>`
+      ).join('');
+      
+      // Show success message
+      const warning = document.querySelector('.warning');
+      if (warning) warning.remove();
+      
+      const success = document.createElement('div');
+      success.className = 'success';
+      success.innerHTML = `✅ Successfully parsed ${nodes.length} nodes! Now click "Generate Edges" to create connections.`;
+      document.getElementById('nodeList').before(success);
+    }
+    
+    function generateEdges() {
+      if (nodes.length === 0) {
+        alert('Please parse nodes first!');
+        return;
+      }
+      
+      const maxDist = parseFloat(document.getElementById('maxDist').value);
+      const K = parseInt(document.getElementById('maxNeighbors').value);
+      
+      const edges = [];
+      const edgeSet = new Set();
+      
+      // For each node, find K nearest neighbors within maxDist
+      nodes.forEach(node => {
+        // Calculate distances to all other nodes
+        const distances = nodes
+          .filter(other => other.id !== node.id)
+          .map(other => ({
+            id: other.id,
+            dist: Math.hypot(other.x - node.x, other.y - node.y)
+          }))
+          .filter(d => d.dist <= maxDist)
+          .sort((a, b) => a.dist - b.dist)
+          .slice(0, K);
+        
+        // Create edges
+        distances.forEach(neighbor => {
+          // Create a canonical edge key (sorted IDs to avoid duplicates)
+          const edgeKey = [node.id, neighbor.id].sort().join('|');
+          
+          if (!edgeSet.has(edgeKey)) {
+            edgeSet.add(edgeKey);
+            edges.push({
+              from: node.id,
+              to: neighbor.id,
+              dist: neighbor.dist.toFixed(2)
+            });
+          }
+        });
+      });
+      
+      // Generate XML output
+      let output = '<g id="nav-edges">\n';
+      output += '  <!-- Auto-generated navigation edges -->\n';
+      output += `  <!-- Generated with maxDist=${maxDist}, K=${K} -->\n`;
+      output += `  <!-- Total edges: ${edges.length} -->\n\n`;
+      
+      edges.forEach(edge => {
+        output += `  <line class="nav-edge" data-from="${edge.from}" data-to="${edge.to}"/>\n`;
+      });
+      
+      output += '</g>';
+      
+      // Show output
+      document.getElementById('output').style.display = 'block';
+      document.getElementById('outputContent').textContent = output;
+      
+      // Update stats
+      const avgDegree = (edges.length * 2 / nodes.length).toFixed(2);
+      document.getElementById('statsContent').innerHTML += `
+        <div><strong>Generated Edges:</strong> ${edges.length}</div>
+        <div><strong>Average Degree:</strong> ${avgDegree}</div>
+        <div><strong>Min Degree Needed:</strong> 2 (for connectivity)</div>
+      `;
+      
+      if (avgDegree < 2) {
+        const warning = document.createElement('div');
+        warning.className = 'warning';
+        warning.innerHTML = `⚠️ <strong>Warning:</strong> Average degree is ${avgDegree}, which is less than 2. 
+          Your graph may have disconnected clusters. Try increasing Max Distance or Max Neighbors.`;
+        document.getElementById('output').before(warning);
+      }
+    }
+    
+    function copyOutput() {
+      const output = document.getElementById('outputContent').textContent;
+      navigator.clipboard.writeText(output).then(() => {
+        alert('✅ Copied to clipboard! Paste this into your SVG file inside the <g id="nav"> group.');
+      });
+    }
+  </script>
+</body>
+</html>
+

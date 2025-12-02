@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Convert Nav Nodes - Path to Circle</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 300px;
+      padding: 15px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      resize: vertical;
+      margin-bottom: 15px;
+    }
+    button {
+      background: #2196F3;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background: #1976D2;
+    }
+    button.secondary {
+      background: #4CAF50;
+    }
+    button.secondary:hover {
+      background: #388E3C;
+    }
+    .output {
+      background: #f9f9f9;
+      border: 2px solid #4CAF50;
+      border-radius: 4px;
+      padding: 15px;
+      margin-top: 20px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    .output pre {
+      margin: 0;
+      white-space: pre-wrap;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+    }
+    .stats {
+      background: #E3F2FD;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 20px 0;
+    }
+    .success {
+      background: #E8F5E9;
+      border-left: 4px solid #4CAF50;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    .warning {
+      background: #FFF3E0;
+      border-left: 4px solid #FF9800;
+      padding: 15px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔄 Nav Node Converter</h1>
+    <p class="subtitle">Convert Figma path-based nav nodes to proper circle elements</p>
+    
+    <div class="warning">
+      <strong>⚠️ Instructions:</strong>
+      <ol>
+        <li>Open your <code>ground_floor.svg</code> file</li>
+        <li>Find all lines that start with <code>&lt;path id="nav_</code></li>
+        <li>Copy ALL nav node paths (both room and junction nodes)</li>
+        <li>Paste them below</li>
+        <li>Click "Convert to Circles"</li>
+      </ol>
+    </div>
+    
+    <label><strong>Step 1: Paste your nav node paths here</strong></label>
+    <textarea id="input" placeholder='Paste lines like:
+<path id="nav_room_BK36" d="M1323.93 380.858C1324.79..." fill="#FF0000" stroke="#CC0000"/>
+<path id="nav_junction_1" d="M1251.67 152.903C1252.54..." fill="#FFF200" stroke="#DDDA00"/>
+...'></textarea>
+    
+    <button onclick="convertNodes()">Convert to Circles</button>
+    <button class="secondary" onclick="copyOutput()">Copy Output</button>
+    
+    <div id="stats" style="display: none;" class="stats">
+      <h3 style="margin-top: 0;">📊 Conversion Statistics</h3>
+      <div id="statsContent"></div>
+    </div>
+    
+    <div id="output" style="display: none;" class="output">
+      <h3 style="margin-top: 0;">✅ Converted Circle Elements</h3>
+      <pre id="outputContent"></pre>
+    </div>
+  </div>
+
+  <script>
+    function extractCenterFromPath(dAttribute) {
+      // Extract M command (move to) which gives us the starting point
+      const mMatch = dAttribute.match(/M\s*([\d.]+)\s+([\d.]+)/);
+      if (!mMatch) return null;
+      
+      const startX = parseFloat(mMatch[1]);
+      const startY = parseFloat(mMatch[2]);
+      
+      // Extract C command (cubic bezier) to find the center
+      const cMatch = dAttribute.match(/C\s*([\d.]+)\s+([\d.]+)/);
+      if (cMatch) {
+        const cx = parseFloat(cMatch[1]);
+        const cy = parseFloat(cMatch[2]);
+        
+        // Average of start and control point gives approximate center
+        return {
+          cx: ((startX + cx) / 2).toFixed(2),
+          cy: ((startY + cy) / 2).toFixed(2)
+        };
+      }
+      
+      // If no C command, use M coordinates
+      return {
+        cx: startX.toFixed(2),
+        cy: startY.toFixed(2)
+      };
+    }
+    
+    function convertNodes() {
+      const input = document.getElementById('input').value;
+      if (!input.trim()) {
+        alert('Please paste your nav node paths first!');
+        return;
+      }
+      
+      const lines = input.split('\n').filter(line => line.trim());
+      const nodes = [];
+      let roomNodes = 0;
+      let junctionNodes = 0;
+      
+      lines.forEach(line => {
+        // Extract id
+        const idMatch = line.match(/id="([^"]+)"/);
+        if (!idMatch) return;
+        const id = idMatch[1];
+        
+        // Extract d attribute
+        const dMatch = line.match(/d="([^"]+)"/);
+        if (!dMatch) return;
+        const d = dMatch[1];
+        
+        // Extract fill color
+        const fillMatch = line.match(/fill="([^"]+)"/);
+        const fill = fillMatch ? fillMatch[1] : '#FF0000';
+        
+        // Extract stroke color
+        const strokeMatch = line.match(/stroke="([^"]+)"/);
+        const stroke = strokeMatch ? strokeMatch[1] : '#CC0000';
+        
+        // Extract center coordinates
+        const center = extractCenterFromPath(d);
+        if (!center) return;
+        
+        // Determine if it's a room node or junction
+        const isRoom = id.includes('room_');
+        const isJunction = id.includes('junction_');
+        
+        if (isRoom) roomNodes++;
+        if (isJunction) junctionNodes++;
+        
+        // Determine data-room attribute for room nodes
+        let dataRoom = '';
+        if (isRoom) {
+          // Extract room name from nav_room_XXX
+          const roomMatch = id.match(/nav_room_(.+)/);
+          if (roomMatch) {
+            dataRoom = `room_${roomMatch[1]}`;
+          }
+        }
+        
+        nodes.push({
+          id,
+          cx: center.cx,
+          cy: center.cy,
+          fill,
+          stroke,
+          isRoom,
+          isJunction,
+          dataRoom
+        });
+      });
+      
+      if (nodes.length === 0) {
+        alert('No valid nav nodes found. Make sure you copied the correct lines.');
+        return;
+      }
+      
+      // Generate output
+      let output = '<g id="nav" style="display:none">\n';
+      output += '  <title>Navigation Graph</title>\n\n';
+      
+      // Room nodes first
+      output += '  <!-- Room Entrance Nodes -->\n';
+      nodes.filter(n => n.isRoom).forEach(node => {
+        output += `  <circle class="nav-node"\n`;
+        output += `          id="${node.id}"\n`;
+        output += `          cx="${node.cx}"\n`;
+        output += `          cy="${node.cy}"\n`;
+        output += `          r="5"\n`;
+        if (node.dataRoom) {
+          output += `          data-room="${node.dataRoom}"\n`;
+        }
+        output += `          data-label="${node.id.replace('nav_room_', '').replace('nav_', '')} Entrance"/>\n\n`;
+      });
+      
+      // Junction nodes
+      output += '  <!-- Hallway Junction Nodes -->\n';
+      nodes.filter(n => n.isJunction).forEach(node => {
+        output += `  <circle class="nav-node"\n`;
+        output += `          id="${node.id}"\n`;
+        output += `          cx="${node.cx}"\n`;
+        output += `          cy="${node.cy}"\n`;
+        output += `          r="5"\n`;
+        output += `          data-label="${node.id.replace('nav_', '')}"/>\n\n`;
+      });
+      
+      // Other nodes (if any)
+      const otherNodes = nodes.filter(n => !n.isRoom && !n.isJunction);
+      if (otherNodes.length > 0) {
+        output += '  <!-- Other Navigation Nodes -->\n';
+        otherNodes.forEach(node => {
+          output += `  <circle class="nav-node"\n`;
+          output += `          id="${node.id}"\n`;
+          output += `          cx="${node.cx}"\n`;
+          output += `          cy="${node.cy}"\n`;
+          output += `          r="5"/>\n\n`;
+        });
+      }
+      
+      output += '  <!-- Navigation Edges (TODO: Add connections) -->\n';
+      output += '  <g id="nav-edges">\n';
+      output += '    <!-- Use generate_nav_edges.html to create edges -->\n';
+      output += '  </g>\n\n';
+      output += '</g>';
+      
+      // Show output
+      document.getElementById('output').style.display = 'block';
+      document.getElementById('outputContent').textContent = output;
+      
+      // Show stats
+      document.getElementById('stats').style.display = 'block';
+      document.getElementById('statsContent').innerHTML = `
+        <div><strong>Total Nodes Converted:</strong> ${nodes.length}</div>
+        <div><strong>Room Nodes:</strong> ${roomNodes}</div>
+        <div><strong>Junction Nodes:</strong> ${junctionNodes}</div>
+        <div><strong>Other Nodes:</strong> ${otherNodes.length}</div>
+      `;
+      
+      // Show success message
+      const success = document.createElement('div');
+      success.className = 'success';
+      success.innerHTML = `
+        <strong>✅ Conversion Complete!</strong><br>
+        <p>Next steps:</p>
+        <ol>
+          <li>Copy the output below</li>
+          <li>Open your <code>ground_floor.svg</code> file</li>
+          <li>Find the old nav section (search for <code>id="nav</code>)</li>
+          <li>Replace it with the converted output</li>
+          <li>Use <code>generate_nav_edges.html</code> to create edges</li>
+          <li>Test in your app!</li>
+        </ol>
+      `;
+      document.getElementById('output').before(success);
+    }
+    
+    function copyOutput() {
+      const output = document.getElementById('outputContent').textContent;
+      if (!output) {
+        alert('Please convert nodes first!');
+        return;
+      }
+      
+      navigator.clipboard.writeText(output).then(() => {
+        alert('✅ Copied to clipboard! Now paste it into your SVG file.');
+      });
+    }
+  </script>
+</body>
+</html>
+
