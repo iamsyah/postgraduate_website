@@ -5,8 +5,9 @@ import Hero from "./components/Hero";
 import Announcements from "./components/Announcements";
 import Programmes from "./components/Programmes";
 import Footer from "./components/Footer";
-import About from "./pages/About"; // new page
+import About from "./pages/About";
 import IndoorDirectory from "./pages/IndoorDirectory";
+import ImportantDates from "./pages/ImportantDates";
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
           }
         />
         <Route path="/about" element={<About />} />
+        <Route path="/dates" element={<ImportantDates />} />
         <Route path="/indoordirectory" element={<IndoorDirectory />} />
       </Routes>
       <Footer />
