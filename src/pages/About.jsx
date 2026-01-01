@@ -1,8 +1,19 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Mail, User } from "lucide-react";
 
-// Organizational chart data from FSKM website
-const organizationalChart = [
+// CMS API URL - change this when deploying
+const CMS_API = import.meta.env.VITE_CMS_API || "http://localhost:3001/api";
+
+// Fallback data if CMS is unavailable
+const FALLBACK_DESCRIPTION = `Center for Graduate Studies at the Faculty of Computer and Mathematical Sciences is responsible for offering postgraduate programs, including Coursework Master's, Research Master's, and Doctor of Philosophy programs in various fields under Computer Sciences and Mathematical Sciences.
+
+These programs are designed holistically, focusing on industry-oriented education and ensuring our students possess the skills and knowledge to thrive in their chosen fields. Our coursework and research programs harness cutting-edge technology to expand the breadth of learning and offer students an outstanding chance to explore new frontiers related to artificial intelligence, analytics, cybersecurity, informatics, and others.
+
+Advanced facilities are provided to support the teaching and learning activities and implement the integrated curriculum. Among the facilities provided are Science Data Laboratories, a Security Operation Centre, a Digital Forensic Lab, an IoT Lab, an Intelligent Information System Lab, Centre for UiTM – Maple, an Actuary Resource Centre and so on.
+
+Our programs will provide students with the best tools, skills, and knowledge to excel on a professional level and apply what they have learned in career and life.`;
+
+const FALLBACK_ORG_CHART = [
   {
     id: 1,
     name: "Assoc. Prof Ts. Dr. Suhaila Abd Halim",
@@ -83,6 +94,43 @@ const organizationalChart = [
 ];
 
 export default function About() {
+  const [description, setDescription] = useState(FALLBACK_DESCRIPTION);
+  const [organizationalChart, setOrganizationalChart] = useState(FALLBACK_ORG_CHART);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAboutData();
+  }, []);
+
+  const fetchAboutData = async () => {
+    try {
+      // Fetch description and org chart in parallel
+      const [descRes, orgRes] = await Promise.all([
+        fetch(`${CMS_API}/about/description`),
+        fetch(`${CMS_API}/about/org-chart`)
+      ]);
+
+      if (descRes.ok) {
+        const descData = await descRes.json();
+        setDescription(descData.description || FALLBACK_DESCRIPTION);
+      }
+
+      if (orgRes.ok) {
+        const orgData = await orgRes.json();
+        // Filter only active members
+        const activeMembers = orgData.filter(member => member.isActive);
+        if (activeMembers.length > 0) {
+          setOrganizationalChart(activeMembers);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch about data from CMS:", err);
+      // Keep fallback data if CMS is unavailable
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const leadership = organizationalChart.filter((p) => p.category === "leadership");
   const research = organizationalChart.filter((p) => p.category === "research");
   const coursework = organizationalChart.filter((p) => p.category === "coursework");
@@ -93,20 +141,26 @@ export default function About() {
       <section className="bg-purple-900 text-white py-4">
         <div className="max-w-6xl mx-auto px-6">
           <h1 className="text-4xl md:text-5xl font-bold mb-6 text-center">About Us</h1>
-          <div className="text-lg text-purple-100 leading-relaxed space-y-4">
-            <p className="text-center">
-              <strong className="text-white">Center for Graduate Studies</strong> at the Faculty of Computer and Mathematical Sciences is responsible for offering postgraduate programs, including Coursework Master's, Research Master's, and Doctor of Philosophy programs in various fields under Computer Sciences and Mathematical Sciences.
-            </p>
-            <p className="text-center">
-              These programs are designed holistically, focusing on industry-oriented education and ensuring our students possess the skills and knowledge to thrive in their chosen fields. Our coursework and research programs harness cutting-edge technology to expand the breadth of learning and offer students an outstanding chance to explore new frontiers related to artificial intelligence, analytics, cybersecurity, informatics, and others.
-            </p>
-            <p className="text-center">
-              Advanced facilities are provided to support the teaching and learning activities and implement the integrated curriculum. Among the facilities provided are Science Data Laboratories, a Security Operation Centre, a Digital Forensic Lab, an IoT Lab, an Intelligent Information System Lab, Centre for UiTM – Maple, an Actuary Resource Centre and so on.
-            </p>
-            <p className="text-center">
-              Our programs will provide students with the best tools, skills, and knowledge to excel on a professional level and apply what they have learned in career and life.
-            </p>
-          </div>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-10 w-10 border-4 border-purple-300 border-t-transparent"></div>
+            </div>
+          ) : (
+            <div className="text-lg text-purple-100 leading-relaxed space-y-4">
+              {description.split('\n\n').map((paragraph, index) => (
+                paragraph.trim() && (
+                  <p key={index} className="text-center">
+                    {paragraph.split('\n').map((line, lineIndex) => (
+                      <React.Fragment key={lineIndex}>
+                        {lineIndex > 0 && <br />}
+                        {line}
+                      </React.Fragment>
+                    ))}
+                  </p>
+                )
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -117,39 +171,59 @@ export default function About() {
             Organisational Chart
           </h2>
 
-          {/* Leadership */}
-          <div className="mb-12">
-            <h3 className="text-xl font-semibold text-purple-800 mb-6 text-center">Leadership</h3>
-            <div className="grid md:grid-cols-1 gap-6 max-w-2xl mx-auto">
-              {leadership.map((person) => (
-                <PersonCard key={person.id} person={person} featured />
-              ))}
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-10 w-10 border-4 border-purple-500 border-t-transparent"></div>
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Leadership */}
+              {leadership.length > 0 && (
+                <div className="mb-12">
+                  <h3 className="text-xl font-semibold text-purple-800 mb-6 text-center">Leadership</h3>
+                  <div className="grid md:grid-cols-1 gap-6 max-w-2xl mx-auto">
+                    {leadership.map((person) => (
+                      <PersonCard key={person.id} person={person} featured />
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          {/* Research Programme Coordinators */}
-          <div className="mb-12">
-            <h3 className="text-xl font-semibold text-purple-800 mb-6 text-center">
-              Research Programme Coordinators
-            </h3>
-            <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
-              {research.map((person) => (
-                <PersonCard key={person.id} person={person} />
-              ))}
-            </div>
-          </div>
+              {/* Research Programme Coordinators */}
+              {research.length > 0 && (
+                <div className="mb-12">
+                  <h3 className="text-xl font-semibold text-purple-800 mb-6 text-center">
+                    Research Programme Coordinators
+                  </h3>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    {research.map((person) => (
+                      <PersonCard key={person.id} person={person} />
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          {/* Coursework Programme Coordinators */}
-          <div>
-            <h3 className="text-xl font-semibold text-purple-800 mb-6 text-center">
-              Coursework Programme Coordinators
-            </h3>
-            <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
-              {coursework.map((person) => (
-                <PersonCard key={person.id} person={person} />
-              ))}
-            </div>
-          </div>
+              {/* Coursework Programme Coordinators */}
+              {coursework.length > 0 && (
+                <div>
+                  <h3 className="text-xl font-semibold text-purple-800 mb-6 text-center">
+                    Coursework Programme Coordinators
+                  </h3>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    {coursework.map((person) => (
+                      <PersonCard key={person.id} person={person} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {organizationalChart.length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  No organizational chart data available.
+                </div>
+              )}
+            </>
+          )}
         </div>
       </section>
 

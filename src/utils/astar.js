@@ -68,9 +68,20 @@ export function astar(nodes, startId, goalId) {
       
       const finalPath = path.reverse();
       
+      // Validate: path should have at least 2 nav_path nodes for proper routing
+      // Count nav_path nodes (excluding start and end nav_room nodes)
+      const navPathNodes = finalPath.filter(id => id.includes('nav_path'));
+      const navPathCount = navPathNodes.length;
+      
+      if (navPathCount < 2) {
+        console.warn(`⚠ Path found with only ${navPathCount} nav_path node(s) (minimum 2 recommended). Path:`, finalPath);
+        // Still return the path - better than nothing, but this suggests graph connectivity issues
+      }
+      
       console.debug('A* Success:', {
         iterations,
         pathLength: finalPath.length,
+        navPathCount: navPathCount,
         totalDistance: totalDistance.toFixed(2),
         path: finalPath
       });
@@ -91,6 +102,24 @@ export function astar(nodes, startId, goalId) {
       
       // Skip if already evaluated
       if (closedSet.has(neighbor)) continue;
+      
+      // Path rule enforcement:
+      // - Path must start with nav_room and end with nav_room
+      // - In between, only nav_path nodes are allowed (no nav_room nodes)
+      const isNeighborRoom = neighbor.includes('nav_room');
+      
+      if (isNeighborRoom) {
+        // Allow nav_room nodes only if:
+        // 1. We're at the start node (current === startId), so we can move from nav_room to nav_path, OR
+        // 2. The neighbor is the goal node (neighbor === goalId), so we can finish at nav_room
+        // Otherwise, skip nav_room nodes in the middle of the path
+        const isAtStart = current === startId;
+        const isNeighborGoal = neighbor === goalId;
+        
+        if (!isAtStart && !isNeighborGoal) {
+          continue; // Skip nav_room nodes that aren't start or goal
+        }
+      }
       
       // Calculate tentative gScore
       const edgeWeight = edge.w ?? 1;

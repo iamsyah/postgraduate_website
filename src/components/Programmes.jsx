@@ -1,32 +1,79 @@
 // src/components/Programmes.jsx
 import React, { useState, useEffect } from "react";
+import { Monitor, Calculator, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 
+// CMS API URL - change this when deploying
 const CMS_API = import.meta.env.VITE_CMS_API || "http://localhost:3001/api";
 
 // Fallback data if CMS is unavailable
-const fallbackProgrammes = [
-  {
-    title: "Master by Coursework",
-    description:
-      "Designed for professionals seeking advanced knowledge through structured modules and practical learning experiences.",
-    duration: "Full-time: 1.5 years | Part-time: 3 years",
-  },
-  {
-    title: "Master by Research",
-    description:
-      "Focuses on independent research under supervision, culminating in a dissertation and academic publication.",
-    duration: "Full-time: 2 years | Part-time: 4 years",
-  },
-  {
-    title: "Doctor of Philosophy (PhD)",
-    description:
-      "Offers an opportunity for in-depth research to make a significant contribution to the field of Computer Science.",
-    duration: "Full-time: 3 years | Part-time: 6 years",
-  },
+const FALLBACK_COMPUTING = [
+  { code: "CS700", name: "Postgraduate Certificate in Data Science", url: "#" },
+  { code: "CS707", name: "Master of Computer Science", url: "#" },
+  { code: "CS708", name: "Master of Science in Computer Networking", url: "#" },
+  { code: "CS709", name: "Master of Science in Cybersecurity and Digital Forensics", url: "#" },
+  { code: "CS750", name: "Master of Science (Computer Science)", url: "#" },
+  { code: "CS751", name: "Master of Science (Information Technology)", url: "#" },
+  { code: "CS770", name: "Master of Science in Information Technology", url: "#" },
+  { code: "CS779", name: "Master of Data Science", url: "#" },
+  { code: "CS950", name: "Doctor of Philosophy (Computer Science)", url: "#" },
+  { code: "CS951", name: "Doctor of Philosophy (Information Technology)", url: "#" },
 ];
 
+const FALLBACK_MATHEMATICS = [
+  { code: "CS702", name: "Master of Science in Applied Statistics", url: "#" },
+  { code: "CS752", name: "Master of Science (Mathematics)", url: "#" },
+  { code: "CS753", name: "Master of Science (Statistics)", url: "#" },
+  { code: "CS755", name: "Master of Science (Actuarial Science)", url: "#" },
+  { code: "CS773", name: "Master of Science in Applied Mathematics", url: "#" },
+  { code: "CS952", name: "Doctor of Philosophy (Mathematics)", url: "#" },
+  { code: "CS953", name: "Doctor of Philosophy (Statistics)", url: "#" },
+  { code: "CS954", name: "Doctor of Philosophy (Decision Science)", url: "#" },
+  { code: "CS955", name: "Doctor of Philosophy (Actuarial Science)", url: "#" },
+];
+
+const ProgrammeCard = ({ programme, isExpanded, onToggle }) => {
+  return (
+    <div className="border-b border-gray-200 last:border-b-0">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors text-left"
+      >
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <span className="shrink-0 px-2.5 py-1 text-xs font-semibold rounded bg-gray-100 text-gray-700">
+            {programme.code}
+          </span>
+          <span className="text-sm text-gray-700 leading-tight truncate">{programme.name}</span>
+        </div>
+        {isExpanded ? (
+          <ChevronUp size={18} className="text-gray-400 shrink-0 ml-2" />
+        ) : (
+          <ChevronDown size={18} className="text-gray-400 shrink-0 ml-2" />
+        )}
+      </button>
+      {isExpanded && (
+        <div className="px-4 pb-4 pt-0">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <a
+              href={programme.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium"
+            >
+              Read More
+              <ExternalLink size={16} />
+            </a>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function Programmes() {
-  const [programmes, setProgrammes] = useState([]);
+  const [expandedComputing, setExpandedComputing] = useState(null);
+  const [expandedMathematics, setExpandedMathematics] = useState(null);
+  const [computingProgrammes, setComputingProgrammes] = useState(FALLBACK_COMPUTING);
+  const [mathematicsProgrammes, setMathematicsProgrammes] = useState(FALLBACK_MATHEMATICS);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,68 +85,110 @@ export default function Programmes() {
       const res = await fetch(`${CMS_API}/programmes`);
       if (res.ok) {
         const data = await res.json();
-        const formatted = data.map((item) => ({
-          id: item.id,
-          code: item.code,
-          title: item.name,
-          description: item.description || "",
-          duration: `${item.mode}: ${item.duration}`,
-          level: item.level,
-        }));
-        setProgrammes(formatted);
-      } else {
-        setProgrammes(fallbackProgrammes);
+        
+        // Separate by category
+        const computing = data
+          .filter(p => p.category === 'Computing')
+          .map(p => ({ code: p.code, name: p.name, url: p.url || '#' }));
+        
+        const mathematics = data
+          .filter(p => p.category === 'Mathematics')
+          .map(p => ({ code: p.code, name: p.name, url: p.url || '#' }));
+        
+        if (computing.length > 0) {
+          setComputingProgrammes(computing);
+        }
+        if (mathematics.length > 0) {
+          setMathematicsProgrammes(mathematics);
+        }
       }
     } catch (err) {
-      console.error("Failed to fetch programmes:", err);
-      setProgrammes(fallbackProgrammes);
+      console.error("Failed to fetch programmes from CMS:", err);
+      // Keep fallback data if CMS is unavailable
     } finally {
       setLoading(false);
     }
   };
 
+  const toggleComputing = (code) => {
+    setExpandedComputing(expandedComputing === code ? null : code);
+  };
+
+  const toggleMathematics = (code) => {
+    setExpandedMathematics(expandedMathematics === code ? null : code);
+  };
+
   return (
     <section id="programmes" className="py-16 bg-gray-50">
-      <div className="max-w-6xl mx-auto px-6 text-center">
+      <div className="max-w-6xl mx-auto px-6">
         {/* Section Header */}
-        <h2 className="text-3xl font-bold text-gray-800 mb-4">
-          Programmes Offered
-        </h2>
-        <p className="text-gray-600 mb-12">
-          Explore our postgraduate programmes designed to help you advance your academic and professional journey.
-        </p>
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">
+            Programmes Offered
+          </h2>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Explore our postgraduate programmes in Computing and Mathematical Sciences, 
+            designed to advance your academic and professional journey.
+          </p>
+        </div>
 
-        {/* Loading State */}
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-10 w-10 border-4 border-indigo-500 border-t-transparent"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
           </div>
         ) : (
-          /* Grid of Programmes */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {programmes.map((programme, index) => (
-              <div
-                key={programme.id || index}
-                className="bg-white shadow-lg rounded-2xl p-6 border border-gray-100 hover:shadow-xl transition-all duration-300"
-              >
-                {programme.level && (
-                  <span className="inline-block px-3 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full mb-3">
-                    {programme.level}
-                  </span>
-                )}
-                <h3 className="text-xl font-semibold text-gray-800 mb-3">
-                  {programme.title}
-                </h3>
-                <p className="text-gray-600 mb-4">{programme.description}</p>
-                <p className="text-sm text-gray-500 mb-4">
-                  <strong>Duration:</strong> {programme.duration}
-                </p>
-                <button className="mt-auto inline-block bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors duration-200">
-                  Learn More
-                </button>
+          /* Two Column Layout */
+          <div className="grid md:grid-cols-2 gap-6">
+          {/* Computing Box */}
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-lg">
+                  <Monitor className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Computing</h3>
+                  <p className="text-blue-100 text-sm">{computingProgrammes.length} Programmes</p>
+                </div>
               </div>
-            ))}
+            </div>
+            <div className="divide-y divide-gray-200">
+              {computingProgrammes.map((prog) => (
+                <ProgrammeCard
+                  key={prog.code}
+                  programme={prog}
+                  isExpanded={expandedComputing === prog.code}
+                  onToggle={() => toggleComputing(prog.code)}
+                />
+              ))}
+            </div>
           </div>
+
+          {/* Mathematics Box */}
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-lg">
+                  <Calculator className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Mathematics</h3>
+                  <p className="text-purple-100 text-sm">{mathematicsProgrammes.length} Programmes</p>
+                </div>
+              </div>
+            </div>
+            <div className="divide-y divide-gray-200">
+              {mathematicsProgrammes.map((prog) => (
+                <ProgrammeCard
+                  key={prog.code}
+                  programme={prog}
+                  isExpanded={expandedMathematics === prog.code}
+                  onToggle={() => toggleMathematics(prog.code)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
         )}
       </div>
     </section>

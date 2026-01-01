@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import Announcements from "./components/Announcements";
@@ -10,9 +10,12 @@ import IndoorDirectory from "./pages/IndoorDirectory";
 import ImportantDates from "./pages/ImportantDates";
 
 export default function App() {
+  const location = useLocation();
+  const isIndoorDirectory = location.pathname === "/indoordirectory";
+
   return (
     <>
-      <Navbar />
+      {!isIndoorDirectory && <Navbar />}
       <Routes>
         <Route
           path="/"
@@ -28,7 +31,7 @@ export default function App() {
         <Route path="/dates" element={<ImportantDates />} />
         <Route path="/indoordirectory" element={<IndoorDirectory />} />
       </Routes>
-      <Footer />
+      {!isIndoorDirectory && <Footer />}
     </>
   );
 }
