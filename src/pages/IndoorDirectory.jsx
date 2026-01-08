@@ -8,11 +8,87 @@ import { CustomPaint, CustomPainter, Paint } from "../utils/pathPainter";
 import { animatePath } from "../utils/animatedPath";
 
 const FLOORS = [
-  { id: "L3", label: "L3", file: null },
-  { id: "L2", label: "L2", file: null },
-  { id: "L1", label: "L1", file: null },
   { id: "G", label: "G", file: "/maps/ground_floor.svg" },
+  { id: "1", label: "1", file: "/maps/1st_floor.svg" },
+  { id: "2", label: "2", file: "/maps/2nd_floor.svg" },
 ];
+
+/**
+ * ============================================
+ * FLOOR ROOM CONFIGURATION
+ * ============================================
+ * 
+ * Manually define which rooms are available for each floor.
+ * This list is based on nav_room_* nodes from navigationGraph.js
+ * 
+ * Format:
+ * - Key: Floor ID ("G", "1", "2")
+ * - Value: Array of room objects with:
+ *   - name: Display name (what users see in search)
+ *   - navRoomId: The nav_room_* ID from navigationGraph.js
+ *   - svgRoomId: Optional - SVG room ID if different (e.g., "room_BK33")
+ * 
+ * Rooms are searchable by their display name and will map to nav_room_* IDs for pathfinding.
+ */
+const FLOOR_ROOMS = {
+  // Ground Floor (G) - Available Rooms
+  "G": [
+    { name: "Drop Point", navRoomId: "nav_room_DropPoint" },
+    { name: "He & She", navRoomId: "nav_room_He&She" },
+    { name: "Back Entrance", navRoomId: "nav_room_BackEntrance" },
+    { name: "Surau Man", navRoomId: "nav_room_SurauMan" },
+    { name: "Bilik Omar Khayyam", navRoomId: "nav_room_BilikOmarKhayyam" },
+    { name: "Smart Classroom", navRoomId: "nav_room_SmartClassroom" },
+    { name: "Pejabat Pasca Siswazah", navRoomId: "nav_room_PejabatPascaSiswazah" },
+    { name: "SOC", navRoomId: "nav_room_SOC" },
+    { name: "Student Hub", navRoomId: "nav_room_StudentHub" },
+    { name: "IBDAAI", navRoomId: "nav_room_IBDAAI" },
+    { name: "BK33", navRoomId: "nav_room_BK33" },
+    { name: "BK34", navRoomId: "nav_room_BK34" },
+    { name: "BK35", navRoomId: "nav_room_BK35" },
+    { name: "BK36", navRoomId: "nav_room_BK36" },
+    { name: "BK37", navRoomId: "nav_room_BK37" },
+    { name: "evoCity", navRoomId: "nav_room_evoCity" },
+    { name: "Autism", navRoomId: "nav_room_autism" },
+    { name: "Cloud", navRoomId: "nav_room_Cloud" },
+    { name: "iDACC", navRoomId: "nav_room_iDACC" },
+  ],
+
+  // 1st Floor - Available Rooms
+  "1": [
+    { name: "GLS", navRoomId: "nav_room_GLS" },
+    { name: "BK20", navRoomId: "nav_room_BK20" },
+    { name: "BK21", navRoomId: "nav_room_BK21" },
+    { name: "BK22", navRoomId: "nav_room_BK22" },
+    { name: "BK23", navRoomId: "nav_room_BK23" },
+    { name: "BK24", navRoomId: "nav_room_BK24" },
+    { name: "BK25", navRoomId: "nav_room_BK25" },
+    { name: "BK26", navRoomId: "nav_room_BK26" },
+    { name: "BK27", navRoomId: "nav_room_BK27" },
+    { name: "BK30", navRoomId: "nav_room_BK30" },
+    { name: "BK31", navRoomId: "nav_room_BK31" },
+    { name: "BK32", navRoomId: "nav_room_BK32" },
+    { name: "DK2", navRoomId: "nav_room_DK2" },
+    { name: "DK3", navRoomId: "nav_room_DK3" },
+    { name: "HEP", navRoomId: "nav_room_HEP" },
+  ],
+
+  // 2nd Floor - Available Rooms
+  "2": [
+    { name: "Postgraduate Lab", navRoomId: "nav_room_postgraduateLab" },
+    { name: "Software Lab 1", navRoomId: "nav_room_softlab1" },
+    { name: "Software Lab 2", navRoomId: "nav_room_softlab2" },
+    { name: "User Science", navRoomId: "nav_room_userScience" },
+    { name: "HPC", navRoomId: "nav_room_HPC" },
+    { name: "IIS", navRoomId: "nav_room_IIS" },
+    { name: "MK14", navRoomId: "nav_room_MK14" },
+    { name: "MK15", navRoomId: "nav_room_MK15" },
+    { name: "MK17", navRoomId: "nav_room_MK17" },
+    { name: "MK18", navRoomId: "nav_room_MK18" },
+    { name: "MK19", navRoomId: "nav_room_MK19" },
+    { name: "MK20", navRoomId: "nav_room_MK20" },
+  ],
+};
 
 export default function IndoorDirectory() {
   const navigate = useNavigate();
@@ -73,6 +149,42 @@ export default function IndoorDirectory() {
       svgRef.current.querySelectorAll(".path-line, .path-dot, .path-arrow").forEach((el) => el.remove());
     }
   }, []);
+
+  // Change floor function
+  const changeFloor = useCallback((floorId) => {
+    // Validate floor ID
+    const validFloors = ["G", "1", "2"];
+    if (!validFloors.includes(floorId)) {
+      console.warn(`Invalid floor ID: ${floorId}. Valid floors are: ${validFloors.join(", ")}`);
+      return;
+    }
+
+    // Check if floor has a map file
+    const floor = FLOORS.find((f) => f.id === floorId);
+    if (!floor?.file) {
+      console.warn(`Floor ${floorId} does not have a map file`);
+      return;
+    }
+
+    // Clear current path
+    clearPath();
+
+    // Clear destination and current location
+    setDestination(null);
+    setDestinationName("");
+    setCurrentLocation(null);
+    setCurrentName("");
+
+    // Remove visual markers from SVG
+    if (svgRef.current) {
+      svgRef.current.querySelectorAll(".destination-area, .selected-area").forEach((el) => {
+        el.classList.remove("destination-area", "selected-area");
+      });
+    }
+
+    // Change floor
+    setCurrentFloor(floorId);
+  }, [clearPath]);
 
   // Navigation Graph Painter - CustomPainter implementation
   class NavigationGraphPainter extends CustomPainter {
@@ -212,9 +324,26 @@ export default function IndoorDirectory() {
     }
     const { id } = resolveRoomInput(name);
     setDestination(id || null);
+    
+    // Highlight in SVG - try both navRoomId and svgRoomId
     if (id && svgRef.current) {
-      const el = svgRef.current.getElementById(id);
-      if (el) el.classList.add("destination-area");
+      // Try navRoomId first
+      let el = svgRef.current.getElementById(id);
+      
+      // If not found and we have svgRoomId mapping, try that
+      if (!el && svgRef.current.__navToSvgMap && svgRef.current.__navToSvgMap[id]) {
+        el = svgRef.current.getElementById(svgRef.current.__navToSvgMap[id]);
+      }
+      
+      // Also try room_ prefix version
+      if (!el) {
+        const roomId = id.replace(/^nav_room_/, "room_");
+        el = svgRef.current.getElementById(roomId);
+      }
+      
+      if (el) {
+        el.classList.add("destination-area");
+      }
     }
   };
 
@@ -227,9 +356,26 @@ export default function IndoorDirectory() {
     }
     const { id } = resolveRoomInput(name);
     setCurrentLocation(id || null);
+    
+    // Highlight in SVG - try both navRoomId and svgRoomId
     if (id && svgRef.current) {
-      const el = svgRef.current.getElementById(id);
-      if (el) el.classList.add("selected-area");
+      // Try navRoomId first
+      let el = svgRef.current.getElementById(id);
+      
+      // If not found and we have svgRoomId mapping, try that
+      if (!el && svgRef.current.__navToSvgMap && svgRef.current.__navToSvgMap[id]) {
+        el = svgRef.current.getElementById(svgRef.current.__navToSvgMap[id]);
+      }
+      
+      // Also try room_ prefix version
+      if (!el) {
+        const roomId = id.replace(/^nav_room_/, "room_");
+        el = svgRef.current.getElementById(roomId);
+      }
+      
+      if (el) {
+        el.classList.add("selected-area");
+      }
     }
   };
 
@@ -243,7 +389,7 @@ export default function IndoorDirectory() {
     clearPath();
   };
 
-  // Inject SVG and extract room data
+  // Inject SVG and build room data from manual configuration
   useEffect(() => {
     if (!svgContent || !containerRef.current) return;
 
@@ -263,60 +409,55 @@ export default function IndoorDirectory() {
         if (el.style) el.style.pointerEvents = "visiblePainted";
       });
 
-      // Extract room data
-      const roomEls = Array.from(
-        svg.querySelectorAll('g[id^="room_"], g[id^="office_"], g[id^="toilet_"], g[id^="surau_"], g[id^="cafe_"], g[id^="stair_"]')
-      );
-      const ids = roomEls.map((g) => g.id).filter(Boolean);
-      setRooms(ids);
+      // Get rooms for current floor from manual configuration
+      const floorRooms = FLOOR_ROOMS[currentFloor] || [];
+      
+      if (floorRooms.length === 0) {
+        console.warn(`Floor ${currentFloor}: No rooms configured in FLOOR_ROOMS`);
+        setRooms([]);
+        setRoomNames([]);
+        setNameToId({});
+        setIdToName({});
+        return;
+      }
 
+      // Build room data from manual configuration
       const names = [];
-      const map = Object.create(null);
-      const reverse = Object.create(null);
+      const map = Object.create(null); // name -> navRoomId (for pathfinding)
+      const reverse = Object.create(null); // navRoomId -> name
+      const navToSvgMap = Object.create(null); // navRoomId -> svgRoomId (for highlighting)
+      const roomIds = [];
 
-      for (const g of roomEls) {
-        let name = null;
-        const gId = g.id;
-
-        if (g.dataset?.name) name = g.dataset.name.trim();
-        if (!name) {
-          const pathEls = g.querySelectorAll("path[id]");
-          for (const p of pathEls) {
-            if (p.id && !p.id.includes("_shape") && !p.id.startsWith("room_") && !p.id.startsWith("office_")) {
-              name = p.id.replace(/_/g, " ").trim();
-              break;
-            }
-          }
+      for (const room of floorRooms) {
+        const { name, navRoomId, svgRoomId } = room;
+        
+        // Use navRoomId as the primary ID for pathfinding
+        roomIds.push(navRoomId);
+        
+        // Map display name to navRoomId (for search -> pathfinding)
+        map[name] = navRoomId;
+        reverse[navRoomId] = name;
+        
+        // Store SVG room ID mapping if provided (for highlighting SVG elements)
+        if (svgRoomId) {
+          navToSvgMap[navRoomId] = svgRoomId;
         }
-        if (!name) {
-          const t = g.querySelector("text");
-          if (t?.textContent) name = t.textContent.trim();
-        }
-        if (!name) {
-          name = gId
-            .replace(/^(room_|office_|toilet_|surau_|cafe_|stair_)/i, "")
-            .replace(/([A-Z])/g, " $1")
-            .replace(/_/g, " ")
-            .trim();
-        }
-
-        let display = name;
-        let i = 1;
-        while (map[display] && map[display] !== gId) {
-          i++;
-          display = `${name} (${i})`;
-        }
-        map[display] = gId;
-        reverse[gId] = display;
-        names.push(display);
+        
+        names.push(name);
+      }
+      
+      // Store navToSvgMap in svgRef for later access
+      if (svg) {
+        svg.__navToSvgMap = navToSvgMap;
       }
 
       names.sort((a, b) => a.localeCompare(b));
+      setRooms(roomIds);
       setRoomNames(names);
       setNameToId(map);
       setIdToName(reverse);
     }
-  }, [svgContent]);
+  }, [svgContent, currentFloor]);
 
   // Paint paths when toggled and SVG is loaded
   useEffect(() => {
@@ -348,7 +489,6 @@ export default function IndoorDirectory() {
     
     // Check manual graph first
     if (manualGraph && manualGraph[navRoomId]) {
-      console.log(`Found nav_room node in manual graph: ${roomId} -> ${navRoomId}`);
       return navRoomId;
     }
     
@@ -362,7 +502,6 @@ export default function IndoorDirectory() {
     
     // Check manual graph
     if (manualGraph && manualGraph[navRoomIdFull]) {
-      console.log(`Found nav_room node in manual graph (full): ${roomId} -> ${navRoomIdFull}`);
       return navRoomIdFull;
     }
     
@@ -378,7 +517,6 @@ export default function IndoorDirectory() {
           const nodeSuffix = nodeId.replace(/^nav_room_/i, '');
           if (nodeSuffix.toLowerCase() === roomSuffix.toLowerCase() || 
               nodeSuffix.toLowerCase() === roomId.toLowerCase()) {
-            console.log(`Found nav_room node (case-insensitive): ${roomId} -> ${nodeId}`);
             return nodeId;
           }
         }
@@ -457,18 +595,14 @@ export default function IndoorDirectory() {
       // Check if the room IDs directly match nav_room nodes in the graph
       if (nodes[startRoomId] && nodes[startRoomId].type === 'nav_room') {
         startNavRoomId = startRoomId;
-        console.log(`Start room directly matched: ${startRoomId}`);
       } else {
         startNavRoomId = findNavRoomNode(svg, startRoomId, nodes);
-        console.log(`Looking up start room: ${startRoomId} -> ${startNavRoomId}`);
       }
       
       if (nodes[endRoomId] && nodes[endRoomId].type === 'nav_room') {
         endNavRoomId = endRoomId;
-        console.log(`End room directly matched: ${endRoomId}`);
       } else {
         endNavRoomId = findNavRoomNode(svg, endRoomId, nodes);
-        console.log(`Looking up end room: ${endRoomId} -> ${endNavRoomId}`);
       }
       
       if (!startNavRoomId || !endNavRoomId) {
@@ -530,18 +664,8 @@ export default function IndoorDirectory() {
         return false;
       }
 
-      // Debug: Show connections from nav_path_06
-      if (nodes['nav_path_06']) {
-        console.log('nav_path_06 connections:', nodes['nav_path_06'].edges.map(e => e.to));
-      }
-      // Debug: Show connections from nav_room_BK37
-      if (nodes['nav_room_BK37']) {
-        console.log('nav_room_BK37 connections:', nodes['nav_room_BK37'].edges.map(e => e.to));
-      }
-
       // Route from nav_room to nav_room (path will go through nav_path nodes)
       const nodePath = astar(nodes, startNavRoomId, endNavRoomId);
-      console.log('Path found by A*:', nodePath);
       if (nodePath?.length) {
         const points = [];
         for (const nid of nodePath) {
@@ -574,8 +698,6 @@ export default function IndoorDirectory() {
           };
           return true;
         }
-      } else {
-        console.warn(`No path found between ${startNavRoomId} and ${endNavRoomId}`);
       }
 
       return false;
@@ -695,7 +817,7 @@ export default function IndoorDirectory() {
           {FLOORS.map((floor) => (
             <button
               key={floor.id}
-              onClick={() => floor.file && setCurrentFloor(floor.id)}
+              onClick={() => floor.file && changeFloor(floor.id)}
               disabled={!floor.file}
               className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center font-semibold text-xs md:text-sm transition ${
                 currentFloor === floor.id
