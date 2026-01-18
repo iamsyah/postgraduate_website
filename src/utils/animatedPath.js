@@ -17,7 +17,8 @@ export function animatePath(svg, points, options = {}) {
     dotColor = '#FFFF00', // Yellow color for moving dot
     dotRadius = 6,
     arrowColor = '#FF0000', // Black color for arrows (defaults to pathColor)
-    duration = 3000, // milliseconds
+    duration = 3000
+    , // milliseconds
     onComplete = null
   } = options;
 

@@ -1,3 +1,24 @@
+// Helper: Get floor from node ID or node object
+function getFloorFromNodeId(nodeId, nodes = null) {
+  if (!nodeId) return null;
+  
+  // First, check if node object has floor property (from buildManualGraph)
+  if (nodes && nodes[nodeId] && nodes[nodeId].floor !== undefined && nodes[nodeId].floor !== null) {
+    return nodes[nodeId].floor;
+  }
+  
+  // Fallback: Check for floor suffix: _G, _1, or _2 at the end
+  if (nodeId.endsWith('_G')) return 'G';
+  if (nodeId.endsWith('_2')) return '2';
+  if (nodeId.endsWith('_1')) {
+    // Make sure it's not something like _1_G or _1_2
+    // Since we checked _G and _2 first, if it ends with _1, it's floor 1
+    return '1';
+  }
+  
+  return null;
+}
+
 // A* pathfinding for small graphs represented as:
 // nodes = { id: { x, y, edges: [{to, w}, ...] }, ... }
 // 
@@ -5,6 +26,7 @@
 // - Euclidean distance heuristic (straight-line distance)
 // - Edge weights (actual distances between nodes)
 // - Optimal path guarantee (A* is complete and optimal)
+// - Floor transitions only via stairs/lifts
 //
 // The algorithm will automatically route through junction nodes
 // if they provide a shorter path than direct connections.
@@ -106,6 +128,7 @@ export function astar(nodes, startId, goalId) {
       // Path rule enforcement:
       // - Path must start with nav_room and end with nav_room
       // - In between, only nav_path nodes are allowed (no nav_room nodes)
+      // - Floor transitions must only happen via nav_stair_* or nav_lift_* nodes
       const isNeighborRoom = neighbor.includes('nav_room');
       
       if (isNeighborRoom) {
@@ -118,6 +141,25 @@ export function astar(nodes, startId, goalId) {
         
         if (!isAtStart && !isNeighborGoal) {
           continue; // Skip nav_room nodes that aren't start or goal
+        }
+      }
+      
+      // Floor transition validation: Only allow floor changes via stairs/lifts
+      // When floors differ, at least one node must be a stair/lift (allows nav_path → stair and stair → nav_path)
+      const currentFloor = getFloorFromNodeId(current, nodes);
+      const neighborFloor = getFloorFromNodeId(neighbor, nodes);
+      
+      // If floors are different, at least one node must be a stair/lift
+      // Note: Only validate if both floors are known (not null)
+      // If a floor is null, allow the transition (BFS will propagate floor info later)
+      if (currentFloor && neighborFloor && currentFloor !== neighborFloor) {
+        const isCurrentStairLift = current.startsWith('nav_stair_') || current.startsWith('nav_lift_');
+        const isNeighborStairLift = neighbor.startsWith('nav_stair_') || neighbor.startsWith('nav_lift_');
+        
+        if (!isCurrentStairLift && !isNeighborStairLift) {
+          // Invalid: trying to change floors without using stairs/lifts
+          // At least one node in a floor transition must be a stair/lift
+          continue; // Skip this neighbor
         }
       }
       
@@ -140,13 +182,65 @@ export function astar(nodes, startId, goalId) {
     }
   }
 
-  // No path found
+  // No path found - debug info
   console.warn('A* Failed:', {
     iterations,
     openSetSize: openSet.size,
     closedSetSize: closedSet.size,
+    startId,
+    goalId,
     reason: iterations >= maxIterations ? 'Max iterations reached' : 'No path exists'
   });
+  
+  // Debug: Check what nodes are in closedSet vs what should be reachable
+  const startEdges = nodes[startId]?.edges?.map(e => e.to) || [];
+  const goalEdges = nodes[goalId]?.edges?.map(e => e.to) || [];
+  const goalInClosedSet = closedSet.has(goalId);
+  const startToGoalEdges = nodes[startId]?.edges?.filter(e => e.to === goalId) || [];
+  const goalConnectedPaths = goalEdges.filter(eid => closedSet.has(eid));
+  
+  console.warn('A* Debug:', {
+    startEdges,
+    goalEdges,
+    startFloor: getFloorFromNodeId(startId, nodes),
+    goalFloor: getFloorFromNodeId(goalId, nodes),
+    goalInClosedSet,
+    directConnection: startToGoalEdges.length > 0,
+    closedSetSample: Array.from(closedSet).slice(0, 20),
+    goalConnectedPaths
+  });
+  
+  // More detailed debug logging
+  console.log('A* Detailed Debug:');
+  console.log('- Goal edges:', goalEdges);
+  console.log('- Goal in closedSet?', goalInClosedSet);
+  console.log('- Paths to goal that are in closedSet:', goalConnectedPaths);
+  
+  // Check which nodes connect to nav_path_1 and if any are in closedSet
+  const navPath1Node = nodes['nav_path_1'];
+  if (navPath1Node && navPath1Node.edges) {
+    const navPath1Connections = navPath1Node.edges.map(e => e.to);
+    const navPath1ConnectionsInClosedSet = navPath1Connections.filter(id => closedSet.has(id));
+    console.log('- nav_path_1 connections:', navPath1Connections);
+    console.log('- nav_path_1 connections in closedSet:', navPath1ConnectionsInClosedSet);
+    console.log('- nav_path_1 floor:', getFloorFromNodeId('nav_path_1', nodes));
+    navPath1ConnectionsInClosedSet.forEach(connId => {
+      console.log(`  - ${connId} (floor: ${getFloorFromNodeId(connId, nodes)}) connects to nav_path_1`);
+    });
+  }
+  
+  if (goalConnectedPaths.length > 0) {
+    console.log('  ⚠️ A* reached a node connected to goal but couldn\'t reach goal itself!');
+    goalConnectedPaths.forEach(pathId => {
+      const pathFloor = getFloorFromNodeId(pathId, nodes);
+      const goalFloor = getFloorFromNodeId(goalId, nodes);
+      const pathIsRoom = pathId.includes('nav_room');
+      console.log(`  - ${pathId} (floor: ${pathFloor}, isRoom: ${pathIsRoom}) connects to goal (floor: ${goalFloor})`);
+    });
+  } else {
+    console.log('  ❌ A* never reached any node connected to the goal!');
+    console.log('  This means the path from start to nav_path_1 is being blocked by A* validation rules.');
+  }
   
   return null;
 }

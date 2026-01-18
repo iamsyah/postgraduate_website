@@ -4,98 +4,9 @@ import { Mail, User } from "lucide-react";
 // CMS API URL - change this when deploying
 const CMS_API = import.meta.env.VITE_CMS_API || "http://localhost:3001/api";
 
-// Fallback data if CMS is unavailable
-const FALLBACK_DESCRIPTION = `Center for Graduate Studies at the Faculty of Computer and Mathematical Sciences is responsible for offering postgraduate programs, including Coursework Master's, Research Master's, and Doctor of Philosophy programs in various fields under Computer Sciences and Mathematical Sciences.
-
-These programs are designed holistically, focusing on industry-oriented education and ensuring our students possess the skills and knowledge to thrive in their chosen fields. Our coursework and research programs harness cutting-edge technology to expand the breadth of learning and offer students an outstanding chance to explore new frontiers related to artificial intelligence, analytics, cybersecurity, informatics, and others.
-
-Advanced facilities are provided to support the teaching and learning activities and implement the integrated curriculum. Among the facilities provided are Science Data Laboratories, a Security Operation Centre, a Digital Forensic Lab, an IoT Lab, an Intelligent Information System Lab, Centre for UiTM – Maple, an Actuary Resource Centre and so on.
-
-Our programs will provide students with the best tools, skills, and knowledge to excel on a professional level and apply what they have learned in career and life.`;
-
-const FALLBACK_ORG_CHART = [
-  {
-    id: 1,
-    name: "Assoc. Prof Ts. Dr. Suhaila Abd Halim",
-    role: "Head of Center (Postgraduates)",
-    email: "suhaila889@uitm.edu.my",
-    category: "leadership",
-  },
-  {
-    id: 2,
-    name: "Assoc. Prof. Dr. Shafaf Ibrahim",
-    role: "Postgraduate Coordinator (Research)",
-    email: "shafaf2429@uitm.edu.my",
-    category: "research",
-  },
-  {
-    id: 3,
-    name: "Dr. Emma Nuraihan Mior Ibrahim",
-    role: "Coordinator (Research Programme)\nPhD of Computing Science",
-    email: "emmanuraihan@uitm.edu.my",
-    category: "research",
-  },
-  {
-    id: 4,
-    name: "Ts. Dr. Ahmad Faiz Ghazali",
-    role: "Coordinator (Research Programme)\nMaster of Computing Sciences",
-    email: "faizghazali@uitm.edu.my",
-    category: "research",
-  },
-  {
-    id: 5,
-    name: "Dr. Hazizah Mohd Ijam",
-    role: "Coordinator (Research Programme)\nPhD of Mathematical Sciences",
-    email: "hazizahijam@uitm.edu.my",
-    category: "research",
-  },
-  {
-    id: 6,
-    name: "Dr. Nadhirah Abdul Halim",
-    role: "Coordinator (Research Programme)\nMaster of Mathematical Sciences",
-    email: "nadhirahhalim@uitm.edu.my",
-    category: "research",
-  },
-  {
-    id: 7,
-    name: "Assoc. Prof. Dr. Norizan Mat Diah",
-    role: "Coordinator (Coursework Programme)\nMaster of Computer Science",
-    email: null,
-    category: "coursework",
-  },
-  {
-    id: 8,
-    name: "Dr. Siti Arpah Ahmad",
-    role: "Coordinator (Coursework Programme)\nMaster of Computer Science",
-    email: "arpah340@uitm.edu.my",
-    category: "coursework",
-  },
-  {
-    id: 9,
-    name: "Dr. Norkhushaini Awang",
-    role: "Coordinator (Coursework Programme)\nMaster of Computer Science",
-    email: "nor_awang@uitm.edu.my",
-    category: "coursework",
-  },
-  {
-    id: 10,
-    name: "Dr. Azlin Ahmad",
-    role: "Coordinator (Coursework Programme)\nMaster of Computer Science",
-    email: "azlin121@uitm.edu.my",
-    category: "coursework",
-  },
-  {
-    id: 11,
-    name: "Dr. Nurain Ibrahim",
-    role: "Coordinator (Coursework Programme)\nMaster of Mathematical Sciences",
-    email: "nurainibrahim@uitm.edu.my",
-    category: "coursework",
-  },
-];
-
 export default function About() {
-  const [description, setDescription] = useState(FALLBACK_DESCRIPTION);
-  const [organizationalChart, setOrganizationalChart] = useState(FALLBACK_ORG_CHART);
+  const [description, setDescription] = useState('');
+  const [organizationalChart, setOrganizationalChart] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -112,20 +23,17 @@ export default function About() {
 
       if (descRes.ok) {
         const descData = await descRes.json();
-        setDescription(descData.description || FALLBACK_DESCRIPTION);
+        setDescription(descData.description || '');
       }
 
       if (orgRes.ok) {
         const orgData = await orgRes.json();
         // Filter only active members
-        const activeMembers = orgData.filter(member => member.isActive);
-        if (activeMembers.length > 0) {
-          setOrganizationalChart(activeMembers);
-        }
+        const activeMembers = orgData.filter(member => member.isActive !== false);
+        setOrganizationalChart(activeMembers);
       }
     } catch (err) {
       console.error("Failed to fetch about data from CMS:", err);
-      // Keep fallback data if CMS is unavailable
     } finally {
       setLoading(false);
     }
@@ -195,7 +103,7 @@ export default function About() {
                   <h3 className="text-xl font-semibold text-purple-800 mb-6 text-center">
                     Research Programme Coordinators
                   </h3>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
                     {research.map((person) => (
                       <PersonCard key={person.id} person={person} />
                     ))}
@@ -209,7 +117,7 @@ export default function About() {
                   <h3 className="text-xl font-semibold text-purple-800 mb-6 text-center">
                     Coursework Programme Coordinators
                   </h3>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
                     {coursework.map((person) => (
                       <PersonCard key={person.id} person={person} />
                     ))}
@@ -234,15 +142,16 @@ export default function About() {
             Navigate to FSKM
           </h2>
           <div className="rounded-2xl overflow-hidden shadow-lg">
-            <iframe
-              title="FSKM Map"
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3983.158052192529!2d101.50471907584394!3d3.068562896913858!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31cc4b474d501d57%3A0x2a260f9b2d1acdfb!2sFSKM%20UiTM%20Shah%20Alam!5e0!3m2!1sen!2smy!4v1698485062232!5m2!1sen!2smy"
-              width="100%"
-              height="400"
-              allowFullScreen=""
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            ></iframe>
+            <div className="relative w-full" style={{ paddingBottom: "56.25%", height: 0 }}>
+              <iframe
+                title="FSKM Map"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3983.158052192529!2d101.50471907584394!3d3.068562896913858!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31cc4b474d501d57%3A0x2a260f9b2d1acdfb!2sFSKM%20UiTM%20Shah%20Alam!5e0!3m2!1sen!2smy!4v1698485062232!5m2!1sen!2smy"
+                className="absolute top-0 left-0 w-full h-full"
+                allowFullScreen=""
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              ></iframe>
+            </div>
           </div>
         </div>
       </section>

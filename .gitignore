@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# CMS Server
+server/cms.db
+server/cms.db-journal
+server/uploads/*
+!server/uploads/.gitkeep

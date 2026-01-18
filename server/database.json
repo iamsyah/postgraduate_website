@@ -1,0 +1,37 @@
+{
+  "announcements": [],
+  "programmes": [],
+  "about": {
+    "description": "Center for Graduate Studies at the Faculty of Computer and Mathematical Sciences is responsible for offering postgraduate programs, including Coursework Master's, Research Master's, and Doctor of Philosophy programs in various fields under Computer Sciences and Mathematical Sciences.\n\nThese programs are designed holistically, focusing on industry-oriented education and ensuring our students possess the skills and knowledge to thrive in their chosen fields. Our coursework and research programs harness cutting-edge technology to expand the breadth of learning and offer students an outstanding chance to explore new frontiers related to artificial intelligence, analytics, cybersecurity, informatics, and others.\n\nAdvanced facilities are provided to support the teaching and learning activities and implement the integrated curriculum. Among the facilities provided are Science Data Laboratories, a Security Operation Centre, a Digital Forensic Lab, an IoT Lab, an Intelligent Information System Lab, Centre for UiTM – Maple, an Actuary Resource Centre and so on.\n\nOur programs will provide students with the best tools, skills, and knowledge to excel on a professional level and apply what they have learned in career and life."
+  },
+  "orgChart": [
+    {
+      "id": 1,
+      "name": "Assoc. Prof Ts. Dr. Suhaila Abd Halim",
+      "role": "Head of Center (Postgraduates)",
+      "email": "suhaila889@uitm.edu.my",
+      "category": "leadership",
+      "isActive": true
+    },
+    {
+      "id": 2,
+      "name": "Assoc. Prof. Dr. Shafaf Ibrahim",
+      "role": "Postgraduate Coordinator (Research)",
+      "email": "shafaf2429@uitm.edu.my",
+      "category": "research",
+      "isActive": true
+    }
+  ],
+  "footer": {
+    "about": "Empowering postgraduate students to achieve academic excellence through innovative research, professional development, and collaboration.",
+    "contact": {
+      "address": "Faculty of Computer and Mathematical Sciences (FSKM),\nUniversiti Teknologi MARA (UiTM)",
+      "phone": "+60 3-5544 2000",
+      "email": "fskm.postgrad@uitm.edu.my"
+    }
+  },
+  "admin": {
+    "username": "admin",
+    "password": "$2a$10$hXERXhyS5vIzOYDPO9mql.uhrDS0s3..ttjckU.hM3esST0YlN6ri"
+  }
+}

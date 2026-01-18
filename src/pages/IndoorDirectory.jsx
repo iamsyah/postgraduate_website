@@ -36,27 +36,26 @@ const FLOOR_ROOMS = {
     { name: "Drop Point", navRoomId: "nav_room_DropPoint" },
     { name: "He & She", navRoomId: "nav_room_He&She" },
     { name: "Back Entrance", navRoomId: "nav_room_BackEntrance" },
-    { name: "Surau Man", navRoomId: "nav_room_SurauMan" },
     { name: "Bilik Omar Khayyam", navRoomId: "nav_room_BilikOmarKhayyam" },
     { name: "Smart Classroom", navRoomId: "nav_room_SmartClassroom" },
     { name: "Pejabat Pasca Siswazah", navRoomId: "nav_room_PejabatPascaSiswazah" },
     { name: "SOC", navRoomId: "nav_room_SOC" },
     { name: "Student Hub", navRoomId: "nav_room_StudentHub" },
-    { name: "IBDAAI", navRoomId: "nav_room_IBDAAI" },
+    { name: "Institud Analitik Data Raya dan Kepintaraan Buatan (IBDAAI)", navRoomId: "nav_room_IBDAAI" },
     { name: "BK33", navRoomId: "nav_room_BK33" },
     { name: "BK34", navRoomId: "nav_room_BK34" },
     { name: "BK35", navRoomId: "nav_room_BK35" },
     { name: "BK36", navRoomId: "nav_room_BK36" },
     { name: "BK37", navRoomId: "nav_room_BK37" },
-    { name: "evoCity", navRoomId: "nav_room_evoCity" },
-    { name: "Autism", navRoomId: "nav_room_autism" },
-    { name: "Cloud", navRoomId: "nav_room_Cloud" },
+    { name: "EVO City Development Centre", navRoomId: "nav_room_evoCity" },
+    { name: "National Autism Resource Centre", navRoomId: "nav_room_autism" },
+    { name: "Cloud Operation Centre", navRoomId: "nav_room_Cloud" },
     { name: "iDACC", navRoomId: "nav_room_iDACC" },
   ],
 
   // 1st Floor - Available Rooms
   "1": [
-    { name: "GLS", navRoomId: "nav_room_GLS" },
+    { name: "Global Learning Space", navRoomId: "nav_room_GLS" },
     { name: "BK20", navRoomId: "nav_room_BK20" },
     { name: "BK21", navRoomId: "nav_room_BK21" },
     { name: "BK22", navRoomId: "nav_room_BK22" },
@@ -70,7 +69,7 @@ const FLOOR_ROOMS = {
     { name: "BK32", navRoomId: "nav_room_BK32" },
     { name: "DK2", navRoomId: "nav_room_DK2" },
     { name: "DK3", navRoomId: "nav_room_DK3" },
-    { name: "HEP", navRoomId: "nav_room_HEP" },
+    { name: "Pejabat HEP", navRoomId: "nav_room_HEP" },
   ],
 
   // 2nd Floor - Available Rooms
@@ -79,8 +78,8 @@ const FLOOR_ROOMS = {
     { name: "Software Lab 1", navRoomId: "nav_room_softlab1" },
     { name: "Software Lab 2", navRoomId: "nav_room_softlab2" },
     { name: "User Science", navRoomId: "nav_room_userScience" },
-    { name: "HPC", navRoomId: "nav_room_HPC" },
-    { name: "IIS", navRoomId: "nav_room_IIS" },
+    { name: "High Performance Computing (HPC)", navRoomId: "nav_room_HPC" },
+    { name: "Intelligent Information Systems (IIS)", navRoomId: "nav_room_IIS" },
     { name: "MK14", navRoomId: "nav_room_MK14" },
     { name: "MK15", navRoomId: "nav_room_MK15" },
     { name: "MK17", navRoomId: "nav_room_MK17" },
@@ -108,9 +107,16 @@ export default function IndoorDirectory() {
   const [showDestDropdown, setShowDestDropdown] = useState(false);
   const [showCurrentDropdown, setShowCurrentDropdown] = useState(false);
   const [scale, setScale] = useState(1);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const mapContainerRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [showPathPainter, setShowPathPainter] = useState(false);
   const pathPainterRef = useRef(null);
+  const [pathSegments, setPathSegments] = useState(null); // { floor: string, points: [x, y][] }[]
+  const [pathInfo, setPathInfo] = useState(null); // { startFloor, endFloor, transitions: { from, to, via }[] }
 
   // Load SVG for current floor
   useEffect(() => {
@@ -151,7 +157,7 @@ export default function IndoorDirectory() {
   }, []);
 
   // Change floor function
-  const changeFloor = useCallback((floorId) => {
+  const changeFloor = useCallback((floorId, preservePath = false) => {
     // Validate floor ID
     const validFloors = ["G", "1", "2"];
     if (!validFloors.includes(floorId)) {
@@ -166,25 +172,40 @@ export default function IndoorDirectory() {
       return;
     }
 
-    // Clear current path
+    if (currentFloor === floorId) return; // No change needed
+
+    // Clear current path visualization
     clearPath();
 
-    // Clear destination and current location
-    setDestination(null);
-    setDestinationName("");
-    setCurrentLocation(null);
-    setCurrentName("");
+    // Only clear selections if not preserving path (for manual floor switching)
+    if (!preservePath) {
+      // Clear destination and current location
+      setDestination(null);
+      setDestinationName("");
+      setCurrentLocation(null);
+      setCurrentName("");
+      setPathSegments(null);
+      setPathInfo(null);
 
-    // Remove visual markers from SVG
-    if (svgRef.current) {
-      svgRef.current.querySelectorAll(".destination-area, .selected-area").forEach((el) => {
-        el.classList.remove("destination-area", "selected-area");
-      });
+      // Remove visual markers from SVG
+      if (svgRef.current) {
+        svgRef.current.querySelectorAll(".destination-area, .selected-area").forEach((el) => {
+          el.classList.remove("destination-area", "selected-area");
+        });
+      }
+    } else {
+      // When preserving path, just remove visual markers but keep selections
+      // The path will be redrawn by the useEffect hook
+      if (svgRef.current) {
+        svgRef.current.querySelectorAll(".destination-area, .selected-area").forEach((el) => {
+          el.classList.remove("destination-area", "selected-area");
+        });
+      }
     }
 
     // Change floor
     setCurrentFloor(floorId);
-  }, [clearPath]);
+  }, [clearPath, currentFloor]);
 
   // Navigation Graph Painter - CustomPainter implementation
   class NavigationGraphPainter extends CustomPainter {
@@ -291,39 +312,131 @@ export default function IndoorDirectory() {
     clearHighlights();
   }, [clearHighlights]);
 
-  // Resolve room input to ID
+  // Resolve room input to ID (checks all floors, not just current floor)
   const resolveRoomInput = (input) => {
-    if (!input) return { id: null, name: null };
-    if (nameToId[input]) return { id: nameToId[input], name: input };
+    if (!input) {
+      console.log('resolveRoomInput: empty input');
+      return { id: null, name: null };
+    }
+    
+    // First try current floor's nameToId (faster lookup)
+    if (nameToId[input]) {
+      console.log('resolveRoomInput: direct match in nameToId:', nameToId[input]);
+      return { id: nameToId[input], name: input };
+    }
+    
+    // If not found, search all floors in FLOOR_ROOMS
     const lower = input.toLowerCase();
+    for (const [floorId, floorRooms] of Object.entries(FLOOR_ROOMS)) {
+      for (const room of floorRooms) {
+        if (room.name.toLowerCase() === lower || room.name.toLowerCase().includes(lower)) {
+          console.log('resolveRoomInput: match found in floor', floorId, ':', room.navRoomId);
+          return { id: room.navRoomId, name: room.name };
+        }
+      }
+    }
+    
+    // Also check current floor's nameToId for case-insensitive/partial matches
     for (const key of Object.keys(nameToId)) {
-      if (key.toLowerCase() === lower) return { id: nameToId[key], name: key };
+      if (key.toLowerCase() === lower) {
+        console.log('resolveRoomInput: case-insensitive match:', nameToId[key]);
+        return { id: nameToId[key], name: key };
+      }
     }
     for (const key of Object.keys(nameToId)) {
-      if (key.toLowerCase().includes(lower)) return { id: nameToId[key], name: key };
+      if (key.toLowerCase().includes(lower)) {
+        console.log('resolveRoomInput: partial match:', nameToId[key]);
+        return { id: nameToId[key], name: key };
+      }
     }
+    
+    // Last resort: check rooms array (current floor only)
     for (const rid of rooms) {
-      if (rid.toLowerCase() === lower) return { id: rid, name: rid };
+      if (rid.toLowerCase() === lower) {
+        console.log('resolveRoomInput: match in rooms array:', rid);
+        return { id: rid, name: rid };
+      }
     }
+    
+    console.warn('resolveRoomInput: no match found for:', input, {
+      nameToIdKeys: Object.keys(nameToId).slice(0, 5),
+      roomsCount: rooms.length,
+      searchedAllFloors: true
+    });
     return { id: null, name: null };
   };
 
-  // Filter suggestions
-  const getFilteredRooms = (query) => {
-    if (!query) return roomNames.slice(0, 8);
-    const lower = query.toLowerCase();
-    return roomNames.filter((r) => r.toLowerCase().includes(lower)).slice(0, 8);
+  // Get all rooms grouped by floor
+  const getAllRoomsByFloor = useCallback(() => {
+    const roomsByFloor = {
+      'G': { label: 'Ground Floor', rooms: [] },
+      '1': { label: '1st Floor', rooms: [] },
+      '2': { label: '2nd Floor', rooms: [] }
+    };
+
+    // Use explicit floor order to ensure correct processing order
+    const floorOrder = ['G', '1', '2'];
+    for (const floorId of floorOrder) {
+      const rooms = FLOOR_ROOMS[floorId];
+      if (rooms && roomsByFloor[floorId]) {
+        roomsByFloor[floorId].rooms = rooms.map(room => room.name).sort((a, b) => a.localeCompare(b));
+      }
+    }
+
+    return roomsByFloor;
+  }, []);
+
+  // Define floor order: Ground Floor, 1st Floor, 2nd Floor
+  const FLOOR_ORDER = ['G', '1', '2'];
+
+  // Filter suggestions - returns rooms grouped by floor in correct order
+  const getFilteredRoomsByFloor = (query) => {
+    const allRoomsByFloor = getAllRoomsByFloor();
+    const lower = query ? query.toLowerCase() : '';
+
+    const filtered = {};
+
+    // Process floors in the specified order
+    for (const floorId of FLOOR_ORDER) {
+      const floorData = allRoomsByFloor[floorId];
+      if (!floorData) continue;
+
+      const filteredRooms = lower
+        ? floorData.rooms.filter(room => room.toLowerCase().includes(lower))
+        : floorData.rooms;
+      
+      if (filteredRooms.length > 0) {
+        filtered[floorId] = {
+          label: floorData.label,
+          rooms: filteredRooms
+        };
+      }
+    }
+
+    return filtered;
+  };
+
+  // Get filtered rooms by floor as an ordered array for rendering
+  const getFilteredRoomsByFloorArray = (query) => {
+    const filtered = getFilteredRoomsByFloor(query);
+    // Return as array in correct order
+    return FLOOR_ORDER
+      .map(floorId => ({ floorId, floorData: filtered[floorId] }))
+      .filter(item => item.floorData); // Only include floors that have rooms
   };
 
   // Handle destination selection
   const selectDestination = (name) => {
+    console.log('selectDestination called with:', name);
     setDestinationName(name);
     setShowDestDropdown(false);
     if (svgRef.current) {
       svgRef.current.querySelectorAll(".destination-area").forEach((el) => el.classList.remove("destination-area"));
     }
     const { id } = resolveRoomInput(name);
+    console.log('resolveRoomInput returned:', { id, name });
     setDestination(id || null);
+    console.log('Destination set to:', id || null);
     
     // Highlight in SVG - try both navRoomId and svgRoomId
     if (id && svgRef.current) {
@@ -349,13 +462,16 @@ export default function IndoorDirectory() {
 
   // Handle current location selection
   const selectCurrentLocation = (name) => {
+    console.log('selectCurrentLocation called with:', name);
     setCurrentName(name);
     setShowCurrentDropdown(false);
     if (svgRef.current) {
       svgRef.current.querySelectorAll(".selected-area").forEach((el) => el.classList.remove("selected-area"));
     }
     const { id } = resolveRoomInput(name);
+    console.log('resolveRoomInput returned:', { id, name });
     setCurrentLocation(id || null);
+    console.log('CurrentLocation set to:', id || null);
     
     // Highlight in SVG - try both navRoomId and svgRoomId
     if (id && svgRef.current) {
@@ -398,12 +514,16 @@ export default function IndoorDirectory() {
     svgRef.current = svg;
 
     if (svg) {
-      // Make SVG responsive
+      // Make SVG fill container
       svg.setAttribute("width", "100%");
       svg.setAttribute("height", "100%");
-      svg.style.maxWidth = "100%";
-      svg.style.maxHeight = "100%";
+      svg.style.width = "100%";
+      svg.style.height = "100%";
+      svg.style.display = "block";
       svg.style.pointerEvents = "auto";
+      svg.style.objectFit = "cover";
+      svg.style.minWidth = "100%";
+      svg.style.minHeight = "100%";
       
       svg.querySelectorAll("*").forEach((el) => {
         if (el.style) el.style.pointerEvents = "visiblePainted";
@@ -467,6 +587,79 @@ export default function IndoorDirectory() {
       clearPaintedPaths();
     }
   }, [showPathPainter, svgContent, paintAllPaths, clearPaintedPaths]);
+
+  // Helper: Get floor for a node ID (prefers stored floor from graph if available)
+  const getNodeFloor = useCallback((nodeId, nodes = null) => {
+    if (!nodeId) return null;
+    
+    // First, check if node object has floor property (from buildManualGraph)
+    if (nodes && nodes[nodeId] && nodes[nodeId].floor !== undefined && nodes[nodeId].floor !== null) {
+      return nodes[nodeId].floor;
+    }
+    
+    // Fallback: Check for stair/lift nodes with floor suffix
+    // nav_stair_1_G -> G, nav_stair_1_1 -> 1, nav_stair_1_2 -> 2
+    // nav_lift_CS2_G -> G, nav_lift_CS2_1 -> 1, nav_lift_CS2_2 -> 2
+    
+    // Check for floor suffix: _G, _1, or _2 at the end
+    // Must match the entire suffix to avoid false positives
+    if (nodeId.endsWith('_G')) return 'G';
+    if (nodeId.endsWith('_2')) return '2';
+    if (nodeId.endsWith('_1')) {
+      // Make sure it's not something like _1_G or _1_2
+      // Since we checked _G and _2 first, if it ends with _1, it's floor 1
+      // But double-check: _1_1 would be floor 1, which is correct
+      return '1';
+    }
+    
+    // Check FLOOR_ROOMS for room nodes
+    for (const [floorId, rooms] of Object.entries(FLOOR_ROOMS)) {
+      if (rooms.some((room) => room.navRoomId === nodeId)) {
+        return floorId;
+      }
+    }
+    
+    return null;
+  }, []);
+
+  // Helper: Check if a node is a stair or lift
+  const isStairOrLift = useCallback((nodeId) => {
+    return nodeId?.startsWith('nav_stair_') || nodeId?.startsWith('nav_lift_');
+  }, []);
+
+  // Helper: Validate that path only uses stairs/lifts for floor transitions
+  const validatePathFloorTransitions = useCallback((nodePath, nodes) => {
+    if (!nodePath || nodePath.length < 2) return true; // Valid if too short to have transitions
+
+    for (let i = 0; i < nodePath.length - 1; i++) {
+      const currentNodeId = nodePath[i];
+      const nextNodeId = nodePath[i + 1];
+      
+      if (!currentNodeId || !nextNodeId) continue;
+      
+      const currentFloor = getNodeFloor(currentNodeId, nodes);
+      const nextFloor = getNodeFloor(nextNodeId, nodes);
+      
+      // If floors are different, both nodes must be stairs/lifts for valid floor transition
+      if (currentFloor && nextFloor && currentFloor !== nextFloor) {
+        const currentIsStairLift = isStairOrLift(currentNodeId);
+        const nextIsStairLift = isStairOrLift(nextNodeId);
+        
+        // Both nodes must be stairs/lifts for floor transitions
+        if (!currentIsStairLift || !nextIsStairLift) {
+          console.error(`❌ Invalid floor transition: ${currentFloor} -> ${nextFloor}`);
+          console.error(`   From: ${currentNodeId} (isStair/Lift: ${currentIsStairLift})`);
+          console.error(`   To: ${nextNodeId} (isStair/Lift: ${nextIsStairLift})`);
+          console.error(`   Floor transitions must use stairs/lifts on both sides`);
+          return false;
+        }
+        
+        console.log(`✓ Valid floor transition: ${currentFloor} -> ${nextFloor} via ${currentNodeId} -> ${nextNodeId}`);
+      }
+    }
+    
+    return true;
+  }, [getNodeFloor, isStairOrLift]);
 
   // Helper: Find nav_room_* node ID for a given room ID
   // e.g., room_123 -> nav_room_123, DropPoint -> nav_room_DropPoint
@@ -571,14 +764,102 @@ export default function IndoorDirectory() {
     return null;
   };
 
-  // Draw navigation path
+  // Draw path segments for the current floor
+  const drawPathForCurrentFloor = useCallback((segments) => {
+    if (!svgRef.current || !segments || segments.length === 0) {
+      console.log('Cannot draw path: svgRef or segments missing', {
+        hasSvgRef: !!svgRef.current,
+        hasSegments: !!(segments && segments.length > 0)
+      });
+      return;
+    }
+
+    // Clear existing path first
+    clearPath();
+
+    // Find segments for current floor
+    // Use string comparison to handle type mismatches (e.g., "1" vs 1)
+    const currentFloorSegments = segments.filter(seg => String(seg.floor) === String(currentFloor));
+    
+    console.log(`Drawing path for floor ${currentFloor}:`, {
+      totalSegments: segments.length,
+      currentFloorSegments: currentFloorSegments.length,
+      floorsWithSegments: segments.map(s => `${s.floor}(${typeof s.floor})`),
+      currentFloor: `${currentFloor}(${typeof currentFloor})`,
+      segmentDetails: segments.map(s => ({ floor: s.floor, points: s.points?.length || 0 }))
+    });
+    
+    if (currentFloorSegments.length === 0) {
+      // No path on current floor
+      console.log(`No path segments found for floor ${currentFloor}. Available floors: ${segments.map(s => s.floor).join(', ')}`);
+      return;
+    }
+
+    // Combine all points from current floor segments
+    const points = [];
+    for (const segment of currentFloorSegments) {
+      points.push(...segment.points);
+    }
+
+    console.log(`Combined ${points.length} points for floor ${currentFloor}`);
+
+    // Only draw if we have at least 2 points
+    if (points.length >= 2) {
+      const svg = svgRef.current;
+      
+      // Animate path with moving dot
+      const animation = animatePath(svg, points, {
+        pathWidth: 4,
+        dotRadius: 6,
+        duration: 3000
+      });
+
+      if (animation) {
+        const elements = animation.getElements();
+        pathLineRef.current = {
+          animation,
+          elements,
+          remove: () => {
+            if (animation) {
+              animation.stop();
+            }
+            if (pathLineRef.current?.elements) {
+              pathLineRef.current.elements.forEach(el => el.remove());
+            }
+          }
+        };
+        console.log(`Path drawn successfully on floor ${currentFloor}`, {
+          elementsCount: elements.length,
+          pathElement: elements[0],
+          svgChildrenCount: svg.children.length,
+          pathInSVG: svg.querySelector('.path-line') !== null
+        });
+      } else {
+        console.warn('Animation creation failed');
+      }
+    } else {
+      console.warn(`Not enough points to draw path: ${points.length}`);
+    }
+  }, [currentFloor, clearPath]);
+
+  // Draw navigation path with multi-floor support
   const drawPath = useCallback((startRoomId, endRoomId) => {
-    if (!svgRef.current || !startRoomId || !endRoomId) return false;
-    const svg = svgRef.current;
+    console.log('drawPath called:', { startRoomId, endRoomId, hasSvgRef: !!svgRef.current });
+    
+    if (!svgRef.current || !startRoomId || !endRoomId) {
+      console.warn('drawPath early return:', {
+        hasSvgRef: !!svgRef.current,
+        hasStartRoom: !!startRoomId,
+        hasEndRoom: !!endRoomId
+      });
+      return false;
+    }
 
     try {
       // Clear existing path
       clearPath();
+      setPathSegments(null);
+      setPathInfo(null);
 
       // Build navigation graph using manual definitions
       const nodes = buildManualGraph();
@@ -588,7 +869,6 @@ export default function IndoorDirectory() {
       }
 
       // Find nav_room nodes for start and end
-      // First try to find in manual graph directly, then fallback to SVG lookup
       let startNavRoomId = null;
       let endNavRoomId = null;
       
@@ -596,65 +876,17 @@ export default function IndoorDirectory() {
       if (nodes[startRoomId] && nodes[startRoomId].type === 'nav_room') {
         startNavRoomId = startRoomId;
       } else {
-        startNavRoomId = findNavRoomNode(svg, startRoomId, nodes);
+        startNavRoomId = findNavRoomNode(svgRef.current, startRoomId, nodes);
       }
       
       if (nodes[endRoomId] && nodes[endRoomId].type === 'nav_room') {
         endNavRoomId = endRoomId;
       } else {
-        endNavRoomId = findNavRoomNode(svg, endRoomId, nodes);
+        endNavRoomId = findNavRoomNode(svgRef.current, endRoomId, nodes);
       }
       
       if (!startNavRoomId || !endNavRoomId) {
         console.warn(`Could not find nav_room nodes: start=${startRoomId}(${startNavRoomId}), end=${endRoomId}(${endNavRoomId})`);
-        console.warn('Available nav_room nodes:', Object.keys(nodes).filter(id => nodes[id].type === 'nav_room'));
-        // Fallback: try to find nearest node
-        const startEl = svg.getElementById(startRoomId);
-        const endEl = svg.getElementById(endRoomId);
-        if (!startEl || !endEl) return false;
-        
-        const startBox = startEl.getBBox();
-        const endBox = endEl.getBBox();
-        const startX = startBox.x + startBox.width / 2;
-        const startY = startBox.y + startBox.height / 2;
-        const endX = endBox.x + endBox.width / 2;
-        const endY = endBox.y + endBox.height / 2;
-        
-        const sNode = findNearestNode(nodes, startX, startY);
-        const eNode = findNearestNode(nodes, endX, endY);
-        
-        if (sNode && eNode) {
-          const nodePath = astar(nodes, sNode, eNode);
-          if (nodePath?.length) {
-            const points = [[startX, startY]];
-            for (const nid of nodePath) {
-              if (nodes[nid]) points.push([nodes[nid].x, nodes[nid].y]);
-            }
-            points.push([endX, endY]);
-            
-            // Animate path with moving dot (fallback path)
-            const animation = animatePath(svg, points, {
-              // Colors use defaults from animatedPath.js
-              pathWidth: 4,
-              dotRadius: 6,
-              duration: 3000 // 3 seconds animation
-            });
-
-            pathLineRef.current = {
-              animation,
-              elements: animation ? animation.getElements() : [],
-              remove: () => {
-                if (animation) {
-                  animation.stop();
-                }
-                if (pathLineRef.current?.elements) {
-                  pathLineRef.current.elements.forEach(el => el.remove());
-                }
-              }
-            };
-            return true;
-          }
-        }
         return false;
       }
 
@@ -664,60 +896,306 @@ export default function IndoorDirectory() {
         return false;
       }
 
-      // Route from nav_room to nav_room (path will go through nav_path nodes)
+      // Get floors for start and end (use graph's stored floor info)
+      const startFloor = getNodeFloor(startNavRoomId, nodes);
+      const endFloor = getNodeFloor(endNavRoomId, nodes);
+
+      // Find path using A* (enforces floor transitions only via stairs/lifts)
+      console.log('Calling A* pathfinding...');
       const nodePath = astar(nodes, startNavRoomId, endNavRoomId);
-      if (nodePath?.length) {
-        const points = [];
-        for (const nid of nodePath) {
-          if (nodes[nid]) {
-            points.push([nodes[nid].x, nodes[nid].y]);
+      
+      if (!nodePath || nodePath.length === 0) {
+        console.error('No path found between nodes');
+        console.error('Start node:', startNavRoomId, 'edges:', nodes[startNavRoomId]?.edges?.map(e => e.to) || 'none');
+        console.error('End node:', endNavRoomId, 'edges:', nodes[endNavRoomId]?.edges?.map(e => e.to) || 'none');
+        console.error('Start floor:', startFloor, 'End floor:', endFloor);
+        
+        // Debug: Check graph connectivity
+        const visited = new Set();
+        const queue = [{ id: startNavRoomId, path: [startNavRoomId] }];
+        let reachableNodes = new Set();
+        
+        // BFS to find reachable nodes
+        while (queue.length > 0 && queue.length < 100) {
+          const { id, path } = queue.shift();
+          if (visited.has(id)) continue;
+          visited.add(id);
+          reachableNodes.add(id);
+          
+          const node = nodes[id];
+          if (node && node.edges) {
+            for (const edge of node.edges) {
+              if (!visited.has(edge.to)) {
+                queue.push({ id: edge.to, path: [...path, edge.to] });
+              }
+            }
           }
         }
         
-        // Only draw path if we have at least 2 points
-        if (points.length >= 2) {
-          // Animate path with moving dot
-          const animation = animatePath(svg, points, {
-            // Colors use defaults from animatedPath.js
-            pathWidth: 4,
-            dotRadius: 6,
-            duration: 3000 // 3 seconds animation
-          });
+        console.error('Graph connectivity check:');
+        console.error(`- Total nodes reachable from ${startNavRoomId}: ${reachableNodes.size}`);
+        console.error(`- Can reach ${endNavRoomId}?`, reachableNodes.has(endNavRoomId));
+        if (!reachableNodes.has(endNavRoomId)) {
+          console.error('⚠️ Destination is not reachable from start node!');
+        }
+        
+        return false;
+      }
+      
+      console.log('A* found path with', nodePath.length, 'nodes');
+      
+      // Validate that path only uses stairs/lifts for floor transitions
+      const isValidPath = validatePathFloorTransitions(nodePath, nodes);
+      if (!isValidPath) {
+        console.error('Invalid path: floor transitions must only occur via stairs or lifts');
+        console.error('Path:', nodePath);
+        return false;
+      }
+      
+      console.log('Path validated: all floor transitions use stairs/lifts');
 
-          pathLineRef.current = {
-            animation,
-            elements: animation ? animation.getElements() : [],
-            remove: () => {
-              if (animation) {
-                animation.stop();
-              }
-              if (pathLineRef.current?.elements) {
-                pathLineRef.current.elements.forEach(el => el.remove());
+      // Split path into segments by floor
+      const segments = [];
+      const transitions = [];
+      let currentSegment = null;
+      let currentFloor = startFloor;
+
+      console.log('=== PATHFINDING DEBUG ===');
+      console.log('From:', startNavRoomId, '(Floor', startFloor, ')');
+      console.log('To:', endNavRoomId, '(Floor', endFloor, ')');
+      console.log('Full path:', nodePath);
+      console.log('Path length:', nodePath.length);
+
+      // First pass: identify floors for all nodes in the path
+      const nodeFloors = new Map();
+      let lastKnownFloor = startFloor;
+
+      for (let i = 0; i < nodePath.length; i++) {
+        const nodeId = nodePath[i];
+        // Use graph's stored floor info (from buildManualGraph)
+        let nodeFloor = getNodeFloor(nodeId, nodes);
+        
+        // For nav_path nodes, if still no floor, use the floor of nearby nodes
+        if (!nodeFloor && nodeId.startsWith('nav_path')) {
+          // Look ahead and behind to find a node with a known floor
+          let foundFloor = null;
+          
+          // Look ahead (max 3 nodes)
+          for (let j = i + 1; j < Math.min(i + 4, nodePath.length); j++) {
+            const aheadFloor = getNodeFloor(nodePath[j], nodes);
+            if (aheadFloor) {
+              foundFloor = aheadFloor;
+              break;
+            }
+          }
+          
+          // Look behind if not found ahead (max 3 nodes)
+          if (!foundFloor) {
+            for (let j = i - 1; j >= Math.max(0, i - 4); j--) {
+              const behindFloor = getNodeFloor(nodePath[j], nodes);
+              if (behindFloor) {
+                foundFloor = behindFloor;
+                break;
               }
             }
+          }
+          
+          // Use last known floor as fallback
+          nodeFloor = foundFloor || lastKnownFloor;
+        }
+        
+        if (nodeFloor) {
+          lastKnownFloor = nodeFloor;
+        }
+        
+        nodeFloors.set(nodeId, nodeFloor || lastKnownFloor);
+      }
+
+      // Second pass: build segments with known floor information
+      for (let i = 0; i < nodePath.length; i++) {
+        const nodeId = nodePath[i];
+        const node = nodes[nodeId];
+        
+        if (!node) {
+          console.warn(`[${i}] Node not found in graph:`, nodeId);
+          continue;
+        }
+
+        // Get floor for this node (from our pre-computed map)
+        const nodeFloor = nodeFloors.get(nodeId) || startFloor;
+        const isStairLift = isStairOrLift(nodeId);
+
+        console.log(`[${i}] ${nodeId}`, {
+          floor: nodeFloor,
+          currentFloor,
+          isStairLift,
+          coords: `(${node.x}, ${node.y})`
+        });
+
+        // Initialize segment if needed
+        if (!currentSegment) {
+          currentSegment = {
+            floor: nodeFloor,
+            points: [[node.x, node.y]]
           };
-          return true;
+          currentFloor = nodeFloor;
+          console.log(`  → Started first segment on floor ${nodeFloor}`);
+          continue;
+        }
+
+        // Check if floor changed
+        if (nodeFloor !== currentFloor) {
+          console.log(`  ⚠️ FLOOR CHANGE: ${currentFloor} → ${nodeFloor} via ${nodeId}`);
+          
+          // Save previous segment before floor change
+          if (currentSegment && currentSegment.points.length > 0) {
+            segments.push({...currentSegment});
+            console.log(`  ✓ Saved segment for floor ${currentSegment.floor} (${currentSegment.points.length} points)`);
+          }
+          
+          // Record transition (only if it's via stair/lift)
+          if (isStairLift) {
+            transitions.push({
+              from: currentFloor,
+              to: nodeFloor,
+              via: nodeId
+            });
+          }
+          
+          // Start new segment on new floor
+          currentSegment = {
+            floor: nodeFloor,
+            points: [[node.x, node.y]]
+          };
+          currentFloor = nodeFloor;
+          console.log(`  → Started new segment on floor ${nodeFloor}`);
+        } else {
+          // Same floor, continue current segment
+          currentSegment.points.push([node.x, node.y]);
         }
       }
 
-      return false;
+      // Add final segment
+      if (currentSegment && currentSegment.points.length > 0) {
+        segments.push({...currentSegment});
+        console.log(`✓ Saved final segment for floor ${currentSegment.floor} (${currentSegment.points.length} points)`);
+      }
+
+      console.log('=== PATH SEGMENTS ===');
+      segments.forEach((seg, idx) => {
+        console.log(`Segment ${idx + 1}: Floor ${seg.floor}, ${seg.points.length} points`);
+      });
+      console.log('=== TRANSITIONS ===');
+      transitions.forEach((trans, idx) => {
+        console.log(`Transition ${idx + 1}: Floor ${trans.from} → ${trans.to} via ${trans.via}`);
+      });
+      console.log('=== END DEBUG ===');
+
+      // Store path info
+      setPathInfo({
+        startFloor,
+        endFloor,
+        transitions
+      });
+      setPathSegments(segments);
+
+      // Don't draw here - let the redraw useEffect handle it
+      // This prevents double-drawing and ensures proper timing
+
+      // If multi-floor path and we're not on a floor with a path segment, show message
+      if (startFloor !== endFloor && segments.length > 0) {
+        const hasPathOnCurrentFloor = segments.some(seg => String(seg.floor) === String(currentFloor));
+        if (!hasPathOnCurrentFloor) {
+          console.log(`Path exists but not on current floor ${currentFloor}. Path segments available on floors: ${segments.map(s => s.floor).join(', ')}`);
+        }
+      }
+
+      return true;
     } catch (err) {
       console.error('Error drawing path:', err);
       return false;
     }
-  }, [clearPath]);
+  }, [clearPath, getNodeFloor, isStairOrLift, drawPathForCurrentFloor]);
 
   // Auto-navigate when both selected
   useEffect(() => {
+    console.log('Pathfinding useEffect triggered:', {
+      currentLocation,
+      destination,
+      hasSvgRef: !!svgRef.current
+    });
+    
     if (currentLocation && destination) {
+      console.log('Both locations selected, calling drawPath...');
       drawPath(currentLocation, destination);
+    } else {
+      console.log('Locations not complete, clearing path');
+      // Clear path when selection is cleared
+      clearPath();
+      setPathSegments(null);
+      setPathInfo(null);
     }
-  }, [currentLocation, destination, drawPath]);
+  }, [currentLocation, destination, drawPath, clearPath]);
+
+  // Redraw path when floor changes if we have a path
+  // Wait for SVG to be loaded before drawing
+  useEffect(() => {
+    if (pathSegments && pathSegments.length > 0 && svgRef.current) {
+      // Use a small delay to ensure SVG is fully rendered
+      const timeoutId = setTimeout(() => {
+        drawPathForCurrentFloor(pathSegments);
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [currentFloor, pathSegments, svgContent, drawPathForCurrentFloor]);
 
   // Zoom controls
   const zoomIn = () => setScale((s) => Math.min(s + 0.2, 2.5));
-  const zoomOut = () => setScale((s) => Math.max(s - 0.2, 0.5));
-  const resetZoom = () => setScale(1);
+  const zoomOut = () => setScale((s) => Math.max(s - 0.2, 1.0)); // Minimum zoom: 1.0 (no zoom out beyond default)
+  const resetZoom = () => {
+    setScale(1);
+    setPanX(0);
+    setPanY(0);
+  };
+
+  // Pan/drag handlers
+  const handleMouseDown = (e) => {
+    if (scale > 1) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - panX, y: e.clientY - panY });
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (isDragging && scale > 1) {
+      setPanX(e.clientX - dragStart.x);
+      setPanY(e.clientY - dragStart.y);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchStart = (e) => {
+    if (scale > 1 && e.touches.length === 1) {
+      setIsDragging(true);
+      setDragStart({ x: e.touches[0].clientX - panX, y: e.touches[0].clientY - panY });
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (isDragging && scale > 1 && e.touches.length === 1) {
+      e.preventDefault(); // Prevent scrolling
+      setPanX(e.touches[0].clientX - dragStart.x);
+      setPanY(e.touches[0].clientY - dragStart.y);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
 
   return (
     <div className="h-[100dvh] flex flex-col bg-gray-100 overflow-hidden">
@@ -742,21 +1220,43 @@ export default function IndoorDirectory() {
                 setShowCurrentDropdown(true);
               }}
               onFocus={() => setShowCurrentDropdown(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && currentName) {
+                  e.preventDefault();
+                  const { id, name } = resolveRoomInput(currentName);
+                  if (id) {
+                    selectCurrentLocation(name || currentName);
+                    setShowCurrentDropdown(false);
+                  }
+                }
+              }}
               placeholder="Your location..."
               className="flex-1 bg-transparent outline-none text-sm min-w-0"
             />
           </div>
           {showCurrentDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50 max-h-48 md:max-h-60 overflow-auto">
-              {getFilteredRooms(currentName).map((room) => (
-                <button
-                  key={room}
-                  onClick={() => selectCurrentLocation(room)}
-                  className="w-full text-left px-3 md:px-4 py-2 hover:bg-gray-50 text-sm truncate"
-                >
-                  {room}
-                </button>
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50 max-h-64 md:max-h-96 overflow-auto">
+              {getFilteredRoomsByFloorArray(currentName).map(({ floorId, floorData }) => (
+                <div key={floorId}>
+                  <div className="sticky top-0 bg-gray-100 px-3 md:px-4 py-2 text-xs font-semibold text-gray-700 uppercase tracking-wide border-b border-gray-200">
+                    {floorData.label}
+                  </div>
+                  {floorData.rooms.map((room) => (
+                    <button
+                      key={`${floorId}-${room}`}
+                      onClick={() => selectCurrentLocation(room)}
+                      className="w-full text-left px-3 md:px-4 py-2.5 md:py-2 hover:bg-gray-50 active:bg-gray-100 text-sm truncate touch-manipulation min-h-[44px] flex items-center"
+                    >
+                      {room}
+                    </button>
+                  ))}
+                </div>
               ))}
+              {getFilteredRoomsByFloorArray(currentName).length === 0 && (
+                <div className="px-3 md:px-4 py-4 text-sm text-gray-500 text-center">
+                  No rooms found
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -773,6 +1273,16 @@ export default function IndoorDirectory() {
                 setShowDestDropdown(true);
               }}
               onFocus={() => setShowDestDropdown(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && destinationName) {
+                  e.preventDefault();
+                  const { id, name } = resolveRoomInput(destinationName);
+                  if (id) {
+                    selectDestination(name || destinationName);
+                    setShowDestDropdown(false);
+                  }
+                }
+              }}
               placeholder="Destination..."
               className="flex-1 bg-transparent outline-none text-sm min-w-0"
             />
@@ -783,16 +1293,28 @@ export default function IndoorDirectory() {
             )}
           </div>
           {showDestDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50 max-h-48 overflow-auto">
-              {getFilteredRooms(destinationName).map((room) => (
-                <button
-                  key={room}
-                  onClick={() => selectDestination(room)}
-                  className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm truncate"
-                >
-                  {room}
-                </button>
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50 max-h-64 overflow-auto">
+              {getFilteredRoomsByFloorArray(destinationName).map(({ floorId, floorData }) => (
+                <div key={floorId}>
+                  <div className="sticky top-0 bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 uppercase tracking-wide border-b border-gray-200">
+                    {floorData.label}
+                  </div>
+                  {floorData.rooms.map((room) => (
+                    <button
+                      key={`${floorId}-${room}`}
+                      onClick={() => selectDestination(room)}
+                      className="w-full text-left px-3 py-2.5 hover:bg-gray-50 active:bg-gray-100 text-sm truncate touch-manipulation min-h-[44px] flex items-center"
+                    >
+                      {room}
+                    </button>
+                  ))}
+                </div>
               ))}
+              {getFilteredRoomsByFloorArray(destinationName).length === 0 && (
+                <div className="px-3 py-4 text-sm text-gray-500 text-center">
+                  No rooms found
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -817,15 +1339,22 @@ export default function IndoorDirectory() {
           {FLOORS.map((floor) => (
             <button
               key={floor.id}
-              onClick={() => floor.file && changeFloor(floor.id)}
+              onClick={() => {
+                if (floor.file) {
+                  // Preserve selections if we have an active path (multi-floor navigation)
+                  const hasActivePath = pathSegments && pathSegments.length > 0 && currentLocation && destination;
+                  changeFloor(floor.id, hasActivePath);
+                }
+              }}
               disabled={!floor.file}
-              className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center font-semibold text-xs md:text-sm transition ${
+              className={`min-w-[44px] min-h-[44px] w-11 h-11 md:w-12 md:h-12 flex items-center justify-center font-semibold text-xs md:text-sm transition touch-manipulation active:scale-95 ${
                 currentFloor === floor.id
                   ? "bg-purple-600 text-white"
                   : floor.file
-                  ? "hover:bg-gray-100 text-gray-700"
+                  ? "hover:bg-gray-100 active:bg-gray-200 text-gray-700"
                   : "text-gray-300 cursor-not-allowed"
               }`}
+              aria-label={`Switch to floor ${floor.label}`}
             >
               {floor.label}
             </button>
@@ -836,51 +1365,90 @@ export default function IndoorDirectory() {
         <div className="absolute left-2 md:left-4 bottom-32 md:bottom-24 z-20">
           <button
             onClick={togglePathPainter}
-            className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-lg shadow-lg transition ${
+            className={`min-w-[44px] min-h-[44px] w-11 h-11 md:w-12 md:h-12 flex items-center justify-center rounded-lg shadow-lg transition touch-manipulation active:scale-95 ${
               showPathPainter
-                ? "bg-green-600 text-white hover:bg-green-700"
-                : "bg-white text-gray-600 hover:bg-gray-100"
+                ? "bg-green-600 text-white hover:bg-green-700 active:bg-green-800"
+                : "bg-white text-gray-600 hover:bg-gray-100 active:bg-gray-200"
             }`}
             title="Toggle Path Painter"
+            aria-label="Toggle path painter"
           >
-            <Route size={18} />
+            <Route size={18} className="md:w-5 md:h-5" />
           </button>
         </div>
 
         {/* Zoom Controls */}
         <div className="absolute left-2 md:left-4 bottom-20 md:bottom-4 z-20 flex flex-col bg-white rounded-lg shadow-lg overflow-hidden">
-          <button onClick={zoomIn} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center hover:bg-gray-100 active:bg-gray-200">
-            <Plus size={18} className="text-gray-600" />
+          <button 
+            onClick={zoomIn} 
+            className="min-w-[44px] min-h-[44px] w-11 h-11 md:w-12 md:h-12 flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 touch-manipulation active:scale-95 transition-colors"
+            aria-label="Zoom in"
+          >
+            <Plus size={18} className="text-gray-600 md:w-5 md:h-5" />
           </button>
-          <button onClick={resetZoom} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 border-y">
-            <Locate size={18} className="text-gray-600" />
+          <button 
+            onClick={resetZoom} 
+            className="min-w-[44px] min-h-[44px] w-11 h-11 md:w-12 md:h-12 flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 border-y touch-manipulation active:scale-95 transition-colors"
+            aria-label="Reset zoom"
+          >
+            <Locate size={18} className="text-gray-600 md:w-5 md:h-5" />
           </button>
-          <button onClick={zoomOut} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center hover:bg-gray-100 active:bg-gray-200">
-            <Minus size={18} className="text-gray-600" />
+          <button 
+            onClick={zoomOut} 
+            className="min-w-[44px] min-h-[44px] w-11 h-11 md:w-12 md:h-12 flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 touch-manipulation active:scale-95 transition-colors"
+            aria-label="Zoom out"
+          >
+            <Minus size={18} className="text-gray-600 md:w-5 md:h-5" />
           </button>
         </div>
 
         {/* Map Container */}
-        <div className="absolute inset-0 overflow-auto flex items-center justify-center p-2 md:p-4">
+        <div 
+          ref={mapContainerRef}
+          className="absolute inset-0 overflow-hidden"
+          style={{
+            cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+          }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           {loading ? (
-            <div className="flex flex-col items-center gap-3 text-gray-500">
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-500">
               <div className="w-8 h-8 md:w-10 md:h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
               <span className="text-sm">Loading map...</span>
             </div>
           ) : !svgContent ? (
-            <div className="text-center text-gray-500">
-              <Navigation size={40} className="mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Floor map not available</p>
+            <div className="flex items-center justify-center h-full text-center text-gray-500">
+              <div>
+                <Navigation size={40} className="mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Floor map not available</p>
+              </div>
             </div>
           ) : (
             <div
-              ref={containerRef}
-              className="transition-transform duration-200 w-full h-full flex items-center justify-center"
               style={{
-                transform: `scale(${scale})`,
-                transformOrigin: "center center",
+                width: '100%',
+                height: '100%',
+                overflow: 'hidden',
               }}
-            />
+            >
+              <div
+                ref={containerRef}
+                className={scale > 1 ? '' : 'transition-transform duration-200'}
+                style={{
+                  transform: `translate(${panX}px, ${panY}px) scale(${scale})`,
+                  transformOrigin: "center center",
+                  width: '100%',
+                  height: '100%',
+                  transition: scale > 1 ? 'none' : 'transform 200ms',
+                }}
+              />
+            </div>
           )}
         </div>
 
@@ -898,36 +1466,96 @@ export default function IndoorDirectory() {
                     setShowDestDropdown(true);
                   }}
                   onFocus={() => setShowDestDropdown(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && destinationName) {
+                      e.preventDefault();
+                      const { id, name } = resolveRoomInput(destinationName);
+                      if (id) {
+                        selectDestination(name || destinationName);
+                        setShowDestDropdown(false);
+                      }
+                    }
+                  }}
                   placeholder="Search destination..."
                   className="flex-1 outline-none text-sm"
                 />
               </div>
               {showDestDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-auto">
-                  {getFilteredRooms(destinationName).map((room) => (
-                    <button
-                      key={room}
-                      onClick={() => selectDestination(room)}
-                      className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm"
-                    >
-                      {room}
-                    </button>
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg max-h-96 overflow-auto">
+                  {getFilteredRoomsByFloorArray(destinationName).map(({ floorId, floorData }) => (
+                    <div key={floorId}>
+                      <div className="sticky top-0 bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 uppercase tracking-wide border-b border-gray-200">
+                        {floorData.label}
+                      </div>
+                      {floorData.rooms.map((room) => (
+                        <button
+                          key={`${floorId}-${room}`}
+                          onClick={() => selectDestination(room)}
+                          className="w-full text-left px-3 py-2.5 hover:bg-gray-50 active:bg-gray-100 text-sm touch-manipulation min-h-[44px] flex items-center"
+                        >
+                          {room}
+                        </button>
+                      ))}
+                    </div>
                   ))}
+                  {getFilteredRoomsByFloorArray(destinationName).length === 0 && (
+                    <div className="px-3 py-4 text-sm text-gray-500 text-center">
+                      No rooms found
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Clear Navigation Button */}
+        {/* Path Info - Top Right Corner */}
+        {destination && currentLocation && pathInfo && pathInfo.startFloor !== pathInfo.endFloor && (
+          <div className={`absolute right-2 md:right-4 z-20 max-w-[calc(100vw-4rem)] md:max-w-sm ${
+            destinationName ? 'top-2 md:top-2' : 'top-20 md:top-20'
+          }`}>
+            <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg px-3 py-2 shadow-lg text-xs md:text-sm">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className="font-medium text-gray-700">Route:</span>
+                <span className="bg-blue-100 px-2 py-1 rounded font-medium">Floor {pathInfo.startFloor}</span>
+                {pathInfo.transitions.map((trans, idx) => {
+                  const viaName = trans.via.replace(/nav_(stair|lift)_/, '').replace(/_G$|_1$|_2$/, '');
+                  const viaType = trans.via.includes('stair') ? 'Stair' : 'Lift';
+                  return (
+                    <React.Fragment key={idx}>
+                      <span className="text-gray-400">→</span>
+                      <span className="bg-yellow-100 px-2 py-1 rounded">{viaType} {viaName}</span>
+                      <span className="text-gray-400">→</span>
+                    </React.Fragment>
+                  );
+                })}
+                <span className="bg-purple-100 px-2 py-1 rounded font-medium">Floor {pathInfo.endFloor}</span>
+              </div>
+              {pathInfo.endFloor !== currentFloor && (
+                <div className="text-orange-600 font-medium text-xs">
+                  Switch to Floor {pathInfo.endFloor} to see remaining path
+                </div>
+              )}
+              {/* Show which floors have path segments */}
+              {pathSegments && pathSegments.length > 0 && (
+                <div className="mt-1 text-gray-500 text-xs">
+                  Path visible on: {pathSegments.map(seg => seg.floor).join(', ')}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Clear Button - Bottom Center */}
         {destination && currentLocation && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
             <button
               onClick={resetSelection}
-              className="bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white px-4 md:px-6 py-2.5 md:py-3 rounded-full shadow-lg flex items-center gap-2 font-medium transition text-sm md:text-base"
+              className="bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white px-4 md:px-6 py-2.5 md:py-3 rounded-full shadow-lg flex items-center gap-2 font-medium transition text-sm md:text-base touch-manipulation active:scale-95 min-h-[44px]"
+              aria-label="Clear navigation path"
             >
-              <X size={16} className="md:w-[18px] md:h-[18px]" />
-              Clear Path
+              <X size={16} className="md:w-[18px] md:h-[18px] flex-shrink-0" />
+              <span>Clear Path</span>
             </button>
           </div>
         )}
@@ -946,24 +1574,15 @@ export default function IndoorDirectory() {
 
       {/* Styles for SVG */}
       <style>{`
-        .destination-area path,
-        .destination-area rect,
-        .destination-area polygon {
-          fill: #3B82F6 !important;
-          fill-opacity: 0.5 !important;
-          stroke: #1D4ED8 !important;
-          stroke-width: 3 !important;
-        }
-        .selected-area path,
-        .selected-area rect,
-        .selected-area polygon {
-          fill: #22C55E !important;
-          fill-opacity: 0.5 !important;
-          stroke: #15803D !important;
-          stroke-width: 3 !important;
-        }
         .path-line {
           pointer-events: none;
+        }
+        /* Improve touch targets on mobile */
+        @media (max-width: 768px) {
+          .destination-area,
+          .selected-area {
+            -webkit-tap-highlight-color: transparent;
+          }
         }
       `}</style>
     </div>

@@ -5,32 +5,6 @@ import { Monitor, Calculator, ChevronDown, ChevronUp, ExternalLink } from "lucid
 // CMS API URL - change this when deploying
 const CMS_API = import.meta.env.VITE_CMS_API || "http://localhost:3001/api";
 
-// Fallback data if CMS is unavailable
-const FALLBACK_COMPUTING = [
-  { code: "CS700", name: "Postgraduate Certificate in Data Science", url: "#" },
-  { code: "CS707", name: "Master of Computer Science", url: "#" },
-  { code: "CS708", name: "Master of Science in Computer Networking", url: "#" },
-  { code: "CS709", name: "Master of Science in Cybersecurity and Digital Forensics", url: "#" },
-  { code: "CS750", name: "Master of Science (Computer Science)", url: "#" },
-  { code: "CS751", name: "Master of Science (Information Technology)", url: "#" },
-  { code: "CS770", name: "Master of Science in Information Technology", url: "#" },
-  { code: "CS779", name: "Master of Data Science", url: "#" },
-  { code: "CS950", name: "Doctor of Philosophy (Computer Science)", url: "#" },
-  { code: "CS951", name: "Doctor of Philosophy (Information Technology)", url: "#" },
-];
-
-const FALLBACK_MATHEMATICS = [
-  { code: "CS702", name: "Master of Science in Applied Statistics", url: "#" },
-  { code: "CS752", name: "Master of Science (Mathematics)", url: "#" },
-  { code: "CS753", name: "Master of Science (Statistics)", url: "#" },
-  { code: "CS755", name: "Master of Science (Actuarial Science)", url: "#" },
-  { code: "CS773", name: "Master of Science in Applied Mathematics", url: "#" },
-  { code: "CS952", name: "Doctor of Philosophy (Mathematics)", url: "#" },
-  { code: "CS953", name: "Doctor of Philosophy (Statistics)", url: "#" },
-  { code: "CS954", name: "Doctor of Philosophy (Decision Science)", url: "#" },
-  { code: "CS955", name: "Doctor of Philosophy (Actuarial Science)", url: "#" },
-];
-
 const ProgrammeCard = ({ programme, isExpanded, onToggle }) => {
   return (
     <div className="border-b border-gray-200 last:border-b-0">
@@ -72,8 +46,8 @@ const ProgrammeCard = ({ programme, isExpanded, onToggle }) => {
 export default function Programmes() {
   const [expandedComputing, setExpandedComputing] = useState(null);
   const [expandedMathematics, setExpandedMathematics] = useState(null);
-  const [computingProgrammes, setComputingProgrammes] = useState(FALLBACK_COMPUTING);
-  const [mathematicsProgrammes, setMathematicsProgrammes] = useState(FALLBACK_MATHEMATICS);
+  const [computingProgrammes, setComputingProgrammes] = useState([]);
+  const [mathematicsProgrammes, setMathematicsProgrammes] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -95,16 +69,11 @@ export default function Programmes() {
           .filter(p => p.category === 'Mathematics')
           .map(p => ({ code: p.code, name: p.name, url: p.url || '#' }));
         
-        if (computing.length > 0) {
-          setComputingProgrammes(computing);
-        }
-        if (mathematics.length > 0) {
-          setMathematicsProgrammes(mathematics);
-        }
+        setComputingProgrammes(computing);
+        setMathematicsProgrammes(mathematics);
       }
     } catch (err) {
       console.error("Failed to fetch programmes from CMS:", err);
-      // Keep fallback data if CMS is unavailable
     } finally {
       setLoading(false);
     }

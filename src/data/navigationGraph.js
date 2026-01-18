@@ -932,8 +932,8 @@ export const navigationNodes = [
   },
   {
     id: "nav_path_98",
-    x: 1277, // TODO: Add coordinate
-    y: 695, // TODO: Add coordinate
+    x: 1182, // TODO: Add coordinate
+    y: 658, // TODO: Add coordinate
     type: "nav_path"
   },
   {
@@ -1385,7 +1385,7 @@ export const navigationConnections = [
   },
   {
     from: "nav_path_11",
-    to: "nav_room_BilikOmarKhayyam"
+    to: "nav_room_SmartClassroom"
   },
   {
     from: "nav_path_12",
@@ -1406,6 +1406,10 @@ export const navigationConnections = [
   {
     from: "nav_path_19",
     to: "nav_room_BackEntrance"
+  },
+  {
+    from: "nav_path_22",
+    to: "nav_path_23"
   },
   {
     from: "nav_path_22",
@@ -1531,6 +1535,10 @@ export const navigationConnections = [
   {
     from: "nav_path_22",
     to: "nav_path_21"
+  },
+  {
+    from: "nav_path_23",
+    to: "nav_path_22"
   },
   {
     from: "nav_path_24",
@@ -1740,10 +1748,6 @@ export const navigationConnections = [
     to: "nav_path_46"
   },
   {
-    from: "nav_path_45",
-    to: "nav_path_64"
-  },
-  {
     from: "nav_path_46",
     to: "nav_path_47"
   },
@@ -1823,10 +1827,6 @@ export const navigationConnections = [
     from: "nav_path_63",
     to: "nav_path_64"
   },
-  { 
-    from: "nav_path_64",
-    to: "nav_path_65"
-  },
   {
     from: "nav_path_65",
     to: "nav_path_66"
@@ -1900,14 +1900,6 @@ export const navigationConnections = [
   },
   {
     from: "nav_path_44",
-    to: "nav_room_GLS"
-  },
-  { 
-    from: "nav_path_45",
-    to: "nav_room_GLS"
-  },
-  {
-    from: "nav_path_46",
     to: "nav_room_GLS"
   },
   {
@@ -2076,10 +2068,6 @@ export const navigationConnections = [
     to: "nav_path_63"
   },
   {
-    from: "nav_path_65",
-    to: "nav_path_64"
-  },
-  {
     from: "nav_path_66",
     to: "nav_path_65"
   },
@@ -2152,14 +2140,6 @@ export const navigationConnections = [
   {
     from: "nav_room_GLS",
     to: "nav_path_44"
-  },
-  {
-    from: "nav_room_GLS",
-    to: "nav_path_45"
-  },
-  {
-    from: "nav_room_GLS",
-    to: "nav_path_46"
   },
   {
     from: "nav_room_HEP",
@@ -2254,10 +2234,6 @@ export const navigationConnections = [
     from: "nav_path_80",
     to: "nav_path_82"
   },
-  { 
-    from: "nav_path_81",
-    to: "nav_path_82"
-  },
   {
     from: "nav_path_82",
     to: "nav_path_83"
@@ -2315,10 +2291,6 @@ export const navigationConnections = [
     to: "nav_path_94"
   },
   {
-    from: "nav_path_94",
-    to: "nav_path_95"
-  },
-  {
     from: "nav_path_95",
     to: "nav_path_97"
   },
@@ -2368,7 +2340,7 @@ export const navigationConnections = [
   },
   {
     from: "nav_path_107",
-    to: "nav_path_1110"
+    to: "nav_path_110"
   },
   {
     from: "nav_path_108",
@@ -2423,11 +2395,11 @@ export const navigationConnections = [
   },
   {
     from: "nav_path_86",
-    to: "nav_room_softLab1"
+    to: "nav_room_softlab1"
   },
   {
     from: "nav_path_94",
-    to: "nav_room_softLab2"
+    to: "nav_room_softlab2"
   },
   {
     from: "nav_path_96",
@@ -2450,7 +2422,7 @@ export const navigationConnections = [
     to: "nav_room_MK15"
   },
   {
-    from: "nav_path_103",
+    from: "nav_path_102",
     to: "nav_room_userScience"
   },
   { 
@@ -2497,10 +2469,6 @@ export const navigationConnections = [
   {
     from: "nav_path_82",
     to: "nav_path_80"
-  },
-  {
-    from: "nav_path_82",
-    to: "nav_path_81"
   },
   {
     from: "nav_path_83",
@@ -2559,10 +2527,6 @@ export const navigationConnections = [
     to: "nav_path_93"
   },
   {
-    from: "nav_path_95",
-    to: "nav_path_94"
-  },
-  {
     from: "nav_path_97",
     to: "nav_path_95"
   },
@@ -2611,7 +2575,7 @@ export const navigationConnections = [
     to: "nav_path_107"
   },
   {
-    from: "nav_path_1110",
+    from: "nav_path_110",
     to: "nav_path_107"
   },
   {
@@ -2665,11 +2629,11 @@ export const navigationConnections = [
     to: "nav_path_81"
   },
   {
-    from: "nav_room_softLab1",
+    from: "nav_room_softlab1",
     to: "nav_path_86"
   },
   {
-    from: "nav_room_softLab2",
+    from: "nav_room_softlab2",
     to: "nav_path_94"
   },
   {
@@ -2694,7 +2658,7 @@ export const navigationConnections = [
   },
   {
     from: "nav_room_userScience",
-    to: "nav_path_103"
+    to: "nav_path_102"
   },
   {
     from: "nav_stair_2_2",
@@ -2821,6 +2785,22 @@ export const navigationConnections = [
  * Helper function to build graph structure from manual definitions
  * Returns: { nodes: { id: { x, y, edges: [...] } }, ... }
  */
+// Helper: Get floor from node ID (for nodes with floor suffixes)
+function getFloorFromNodeId(nodeId) {
+  if (!nodeId) return null;
+  
+  // Check for floor suffix: _G, _1, or _2 at the end
+  if (nodeId.endsWith('_G')) return 'G';
+  if (nodeId.endsWith('_2')) return '2';
+  if (nodeId.endsWith('_1')) {
+    // Make sure it's not something like _1_G or _1_2
+    // Since we checked _G and _2 first, if it ends with _1, it's floor 1
+    return '1';
+  }
+  
+  return null;
+}
+
 export function buildManualGraph() {
   const graph = {};
   
@@ -2830,7 +2810,8 @@ export function buildManualGraph() {
       x: node.x,
       y: node.y,
       type: node.type,
-      edges: []
+      edges: [],
+      floor: getFloorFromNodeId(node.id) // Try to get floor from ID suffix
     };
   });
   
@@ -2860,15 +2841,113 @@ export function buildManualGraph() {
     toNode.edges.push({ to: conn.from, w: distance });
   });
   
-  // Debug: Log connections for specific nodes
-  if (graph['nav_path_06']) {
-    console.log('nav_path_06 edges:', graph['nav_path_06'].edges.map(e => e.to));
-  }
-  if (graph['nav_room_BK37']) {
-    console.log('nav_room_BK37 edges:', graph['nav_room_BK37'].edges.map(e => e.to));
+  // Find the index where 1st floor nodes start (nodes defined under "1ST FLOOR NODES" section)
+  // Ground floor nodes are defined before this index and should be explicitly set to floor 'G'
+  let firstFloorStartIndex = navigationNodes.findIndex(node => {
+    // nav_path_42 is the first node in the 1st floor section based on the structure
+    return node.id === 'nav_path_42';
+  });
+  
+  // If we can't find the exact start, look for other indicators of 1st floor
+  if (firstFloorStartIndex === -1) {
+    firstFloorStartIndex = navigationNodes.findIndex(node => node.id && node.id.includes('_1') && !node.id.includes('_G') && !node.id.includes('_2'));
   }
   
+  // Explicitly assign floor 'G' to all ground floor nodes (those before firstFloorStartIndex)
+  // CRITICAL: Override any floor assignments from ID suffixes (e.g., nav_path_1 ending in _1 should be G, not 1)
+  const groundFloorNodeIds = new Set();
+  if (firstFloorStartIndex > 0) {
+    for (let i = 0; i < firstFloorStartIndex; i++) {
+      const nodeId = navigationNodes[i].id;
+      if (graph[nodeId]) {
+        // This is a ground floor node - explicitly assign 'G' even if ID suggests otherwise
+        // (e.g., nav_path_1 ends with _1 but is on ground floor, not floor 1)
+        const hadFloor = graph[nodeId].floor !== null;
+        graph[nodeId].floor = 'G';
+        groundFloorNodeIds.add(nodeId);
+        if (hadFloor && !nodeId.endsWith('_G')) {
+          // Debug: Log overridden floor assignments
+          console.debug(`Overrode floor assignment for ${nodeId} (was ${graph[nodeId].floor}, set to 'G')`);
+        }
+      }
+    }
+  }
+  
+  // Debug: Log ground floor assignments
+  console.log(`Assigned floor 'G' to ${groundFloorNodeIds.size} ground floor nodes (before index ${firstFloorStartIndex})`);
+  
+  // Infer floors for nodes without floor suffixes by propagating from nodes with known floors
+  // This is done through BFS from known floor nodes (stairs/lifts/rooms with floor info)
+  // Priority: Floor 'G' nodes first, then '1', then '2' to avoid incorrect assignments
+  const knownFloorNodes = Object.keys(graph).filter(id => graph[id].floor !== null);
+  const floorPriority = { 'G': 0, '1': 1, '2': 2 };
+  
+  // Sort known floor nodes by priority (G first, then 1, then 2)
+  const sortedKnownFloorNodes = knownFloorNodes.sort((a, b) => {
+    const aFloor = graph[a].floor;
+    const bFloor = graph[b].floor;
+    return (floorPriority[aFloor] ?? 99) - (floorPriority[bFloor] ?? 99);
+  });
+  
+  const visited = new Set();
+  const queue = [...sortedKnownFloorNodes.map(id => ({ id, floor: graph[id].floor }))];
+  
+  // BFS to propagate floor information
+  while (queue.length > 0) {
+    const { id, floor } = queue.shift();
+    
+    if (visited.has(id)) continue;
+    visited.add(id);
+    
+    // If this node doesn't have a floor yet, assign it
+    // Priority: Don't overwrite existing floors (once assigned, keep it)
+    if (graph[id].floor === null) {
+      graph[id].floor = floor;
+    }
+    
+    // Propagate to neighbors (only through non-stair/lift connections for nav_path nodes)
+    const node = graph[id];
+    for (const edge of node.edges || []) {
+      const neighborId = edge.to;
+      if (!visited.has(neighborId) && graph[neighborId]) {
+        const neighborFloor = graph[neighborId].floor;
+        const isStairLift = id.startsWith('nav_stair_') || id.startsWith('nav_lift_');
+        const neighborIsStairLift = neighborId.startsWith('nav_stair_') || neighborId.startsWith('nav_lift_');
+        
+        // Don't propagate floor across stair/lift nodes (they connect different floors)
+        if (isStairLift && neighborIsStairLift) {
+          // This is an inter-floor connection, skip propagation
+          continue;
+        }
+        
+        // CRITICAL: Never overwrite explicitly assigned ground floor nodes
+        // These nodes were marked as ground floor before BFS and should remain 'G'
+        if (groundFloorNodeIds.has(neighborId)) {
+          // This is a ground floor node - skip propagation to prevent overwriting
+          continue;
+        }
+        
+        // If neighbor doesn't have a floor, propagate current floor
+        // Only propagate if neighbor is still null (don't overwrite)
+        if (neighborFloor === null) {
+          queue.push({ id: neighborId, floor });
+        }
+      }
+    }
+  }
+  
+  // Debug: Log floor assignments for 2nd floor nodes
+  const secondFloorNodes = Object.keys(graph).filter(id => graph[id].floor === '2');
+  const secondFloorPaths = Object.keys(graph).filter(id => id.startsWith('nav_path_') && graph[id].floor === '2');
+  const secondFloorRooms = Object.keys(graph).filter(id => id.startsWith('nav_room_') && graph[id].floor === '2');
+  
   console.log(`Built manual graph with ${navigationNodes.length} nodes and ${navigationConnections.length} connections`);
+  console.log(`2nd floor nodes: ${secondFloorNodes.length} total (${secondFloorPaths.length} paths, ${secondFloorRooms.length} rooms)`);
+  
+  if (secondFloorPaths.length === 0) {
+    console.warn('⚠️ No 2nd floor path nodes found! BFS propagation may have failed.');
+    console.log('Known 2nd floor nodes (stairs):', Object.keys(graph).filter(id => id.endsWith('_2')));
+  }
   
   return graph;
 }

@@ -3,6 +3,13 @@ import React, { useState, useEffect } from "react";
 // CMS API URL - change this when deploying
 const CMS_API = import.meta.env.VITE_CMS_API || "http://localhost:3001/api";
 
+// Get base URL for images (remove /api from CMS_API)
+const getImageBaseUrl = () => {
+  const apiUrl = import.meta.env.VITE_CMS_API || "http://localhost:3001/api";
+  // Remove /api from the end if present
+  return apiUrl.replace(/\/api\/?$/, '');
+};
+
 export default function Announcements() {
   const [filter, setFilter] = useState("All");
   const [announcements, setAnnouncements] = useState([]);
@@ -12,48 +19,62 @@ export default function Announcements() {
     fetchAnnouncements();
   }, []);
 
+  const getImageUrl = (imageUrl) => {
+    if (!imageUrl) return "/announcement/default.jpg";
+    
+    // If it's already a full URL (http:// or https://), use it as-is
+    if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+      return imageUrl;
+    }
+    
+    // If it starts with /uploads, prepend the base URL
+    if (imageUrl.startsWith("/uploads")) {
+      return `${getImageBaseUrl()}${imageUrl}`;
+    }
+    
+    // Otherwise, assume it's a relative path
+    return imageUrl;
+  };
+
   const fetchAnnouncements = async () => {
     try {
       const res = await fetch(`${CMS_API}/announcements`);
       if (res.ok) {
         const data = await res.json();
+        console.log('Announcements data received:', data);
         // Transform CMS data to match component format
-        const formatted = data.map((item) => ({
-          id: item.id,
-          title: item.title,
-          description: item.description,
-          date: new Date(item.createdAt).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          }),
-          image: item.imageUrl?.startsWith("/uploads")
-            ? `http://localhost:3001${item.imageUrl}`
-            : item.imageUrl || "/announcement/default.jpg",
-          category: "Notices", // Default category
-          link: item.link,
-        }));
+        const formatted = data.map((item) => {
+          // Handle both imageUrl (camelCase) and image_url (snake_case) for compatibility
+          const imageUrl = item.imageUrl || item.image_url;
+          const finalImageUrl = getImageUrl(imageUrl);
+          console.log(`Announcement "${item.title}":`, {
+            originalImageUrl: imageUrl,
+            finalImageUrl: finalImageUrl,
+            baseUrl: getImageBaseUrl()
+          });
+          
+          return {
+            id: item.id,
+            title: item.title,
+            description: item.description,
+            date: new Date(item.createdAt || item.created_at).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }),
+            image: finalImageUrl,
+            category: item.category || "Notices",
+            link: item.link,
+          };
+        });
         setAnnouncements(formatted);
+      } else {
+        console.error("Failed to fetch announcements:", res.status, res.statusText);
+        setAnnouncements([]);
       }
     } catch (err) {
       console.error("Failed to fetch announcements:", err);
-      // Fallback to static data if CMS is unavailable
-      setAnnouncements([
-        {
-          id: 1,
-          title: "Returned Student Registration",
-          date: "October 10, 2025",
-          image: "/announcement/returned_student.jpg",
-          category: "Notices",
-        },
-        {
-          id: 2,
-          title: "Briefing Session for New Postgraduate Students",
-          date: "October 30, 2025",
-          image: "/announcement/brief_session.jpg",
-          category: "Academic",
-        },
-      ]);
+      setAnnouncements([]);
     } finally {
       setLoading(false);
     }
@@ -98,11 +119,25 @@ export default function Announcements() {
                 key={item.id}
                 className="bg-white rounded-lg shadow hover:shadow-lg transition overflow-hidden"
               >
-                <img
-                  src={item.image}
-                  alt={item.title}
-                  className="w-full h-100 object-cover"
-                />
+                <div className="relative w-full" style={{ paddingBottom: "56.25%", height: 0, overflow: "hidden" }}>
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="absolute top-0 left-0 w-full h-full object-cover"
+                    loading="lazy"
+                    onError={(e) => {
+                      // Log error for debugging
+                      console.error(`Failed to load image for "${item.title}":`, item.image);
+                      // Fallback to default image if image fails to load
+                      if (e.target.src !== `${getImageBaseUrl()}/announcement/default.jpg`) {
+                        e.target.src = "/announcement/default.jpg";
+                      }
+                    }}
+                    onLoad={() => {
+                      console.log(`Successfully loaded image for "${item.title}":`, item.image);
+                    }}
+                  />
+                </div>
                 <div className="p-5">
                   <p className="text-sm text-gray-500">{item.date}</p>
                   <h3 className="text-lg font-semibold text-gray-800 mt-2 hover:text-blue-600 transition">

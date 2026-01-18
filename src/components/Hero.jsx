@@ -48,14 +48,15 @@ export default function Hero() {
   };
 
   return (
-    <section className="relative w-full" style={{ aspectRatio: "1920 / 700" }}>
+    <section className="relative w-full bg-gray-900 h-[50vh] min-h-[300px] max-h-[400px] md:aspect-[1920/700] md:h-auto md:min-h-[400px] md:max-h-none">
       {/* Background slides with crossfade effect - using img for proper sizing */}
       {IPSIS_HERO_IMAGES.map((imageUrl, index) => (
         <img
           key={index}
           src={imageUrl}
           alt={`IPSis UiTM Banner ${index + 1}`}
-          className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-1000 ${
+          loading={index === 0 ? "eager" : "lazy"}
+          className={`absolute inset-0 w-full h-full object-contain md:object-cover object-center transition-opacity duration-1000 ${
             index === currentSlide ? "opacity-100" : "opacity-0"
           }`}
         />
@@ -69,32 +70,32 @@ export default function Hero() {
         <>
           <button
             onClick={goToPrev}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all"
+            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-20 p-2 md:p-3 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 active:bg-white/40 transition-all touch-manipulation"
             aria-label="Previous slide"
           >
-            <ChevronLeft size={28} />
+            <ChevronLeft size={24} className="md:w-7 md:h-7" />
           </button>
           <button
             onClick={goToNext}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all"
+            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-20 p-2 md:p-3 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 active:bg-white/40 transition-all touch-manipulation"
             aria-label="Next slide"
           >
-            <ChevronRight size={28} />
+            <ChevronRight size={24} className="md:w-7 md:h-7" />
           </button>
         </>
       )}
 
       {/* Slide indicators */}
       {IPSIS_HERO_IMAGES.length > 1 && (
-        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex gap-2 z-20">
+        <div className="absolute bottom-4 md:bottom-20 left-1/2 transform -translate-x-1/2 flex gap-2 z-20">
           {IPSIS_HERO_IMAGES.map((_, index) => (
             <button
               key={index}
               onClick={() => goToSlide(index)}
-              className={`h-2 rounded-full transition-all duration-300 ${
+              className={`h-2 md:h-2.5 rounded-full transition-all duration-300 touch-manipulation ${
                 index === currentSlide
-                  ? "bg-white w-8"
-                  : "bg-white/40 w-2 hover:bg-white/60"
+                  ? "bg-white w-6 md:w-8"
+                  : "bg-white/40 w-2 hover:bg-white/60 active:bg-white/60"
               }`}
               aria-label={`Go to slide ${index + 1}`}
             />
