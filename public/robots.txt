@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Disallow admin and CMS pages from search results
+Disallow: /admin
+
+# Sitemap location (update base URL if using custom domain)
+Sitemap: https://postgraduate-website.vercel.app/sitemap.xml
